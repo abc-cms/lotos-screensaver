@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "carrousel"
+version = "0.1.0"
+description = ""
+authors = ["Sasha K <a.kosak.mbx@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+python-vlc = "^3.0.20123"
+loguru = "^0.7.2"
+pyyaml = "^6.0.1"
+schema = "^0.7.5"
+pathvalidate = "^3.2.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

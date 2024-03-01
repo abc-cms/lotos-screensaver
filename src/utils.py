@@ -1,0 +1,12 @@
+import os
+import sys
+
+
+def expand_path(path: str) -> str:
+    if not os.path.isabs(path):
+        path = os.path.expandvars(path)
+
+        if not os.path.isabs(path):
+            path = os.path.join(os.path.dirname(os.path.realpath(sys.argv[0])), path)
+
+    return os.path.expandvars(os.path.normpath(path))
