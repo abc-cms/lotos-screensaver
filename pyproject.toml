@@ -12,6 +12,7 @@ loguru = "^0.7.2"
 pyyaml = "^6.0.1"
 schema = "^0.7.5"
 pathvalidate = "^3.2.0"
+xscreensaver-config = "^1.0.7"
 
 
 [build-system]

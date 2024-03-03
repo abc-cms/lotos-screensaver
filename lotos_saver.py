@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from src import main
+from lotos import Carrousel
 
 if __name__ == "__main__":
-    main()
+    Carrousel().run()
