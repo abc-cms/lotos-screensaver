@@ -1,5 +1,6 @@
 from copy import deepcopy
 from datetime import datetime, time, timedelta
+from operator import itemgetter
 from typing import Any, Dict, Tuple, Union
 
 import yaml
@@ -112,25 +113,30 @@ def update_screensaver_configuration(xscreensaver_configuration: Dict[str, Any],
     # Check and update mode parameter. Use only one (ours) screensaver.
     if xscreensaver_configuration["mode"] != "one":
         xscreensaver_configuration["mode"] = "one"
+        configuration_changed = True
 
     # Look for our screensaver entry and add new if not found.
     default_program = {
-        "enabled": True,
+        "enabled": "True",
         "renderer": "",
         "command": get_entry_file(),
     }
 
+    entry_file = get_entry_file()
     try:
-        screensaver_index = xscreensaver_configuration["programs"].index(default_program)
+        screensaver_index = list(map(itemgetter("command"),
+                                     xscreensaver_configuration["programs"])).index(entry_file)
     except ValueError:
         screensaver_index = -1
 
     if screensaver_index == -1:
         xscreensaver_configuration["programs"].append(default_program)
         screensaver_index = xscreensaver_configuration["programs"].index(command or default_program)
+        configuration_changed = True
 
     # Check and update index of a screensaver.
     if int(xscreensaver_configuration["selected"]) != screensaver_index:
         xscreensaver_configuration["selected"] = str(screensaver_index)
+        configuration_changed = True
 
     return xscreensaver_configuration, configuration_changed

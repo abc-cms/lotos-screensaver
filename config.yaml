@@ -2,11 +2,13 @@ media_files:
   - type: image
     path: 'media/demo/image1.jpg'
     time: 5 # seconds
+  - type: video
+    path: 'media/demo/video1.mp4'
   - type: image
     path: 'media/demo/image2.jpg'
     time: 3 # seconds
   
 screensaver_settings:
-  start_time: '09:00'
+  start_time: '08:00'
   end_time: '18:00'
-  inactivity_timeout: 500 # seconds
+  inactivity_timeout: 10 # seconds

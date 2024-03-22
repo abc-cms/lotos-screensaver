@@ -16,7 +16,7 @@ class Player:
     def __init__(self, window_id: int):
         logger.info("Initialize Player")
         # Create VLC instance and player.
-        self.__instance = Instance(["--quiet"])
+        self.__instance = Instance(["--no-ignore-config", "--quiet"])
         self.__player = self.__instance.media_player_new()
         # Set window to draw images and video out.
         self.__player.set_xwindow(window_id)
