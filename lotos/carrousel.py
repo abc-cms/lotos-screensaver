@@ -8,18 +8,15 @@ from .utils import expand_path
 from loguru import logger
 from xscreensaver_config.ConfigParser import ConfigParser
 
-from .button_overlay import ButtonOverlay
 from .configuration import adjust_configuration, get_log_file, get_xscreensaver_config_file, read_configuration, \
     update_screensaver_configuration, validate_configuration
-from .slider import Slider
 
 from .cv_player import CvPlayer
 
 
 class Carrousel:
     __loop: Optional[AbstractEventLoop]
-    __slider: Slider
-    __button_overlay: ButtonOverlay
+    __cv_player: CvPlayer
     __restart_xscreensaver: bool
 
     def __init__(self):
@@ -45,9 +42,7 @@ class Carrousel:
 
         # Get a window id (xid) and create a slider using the one.
         xid = self.__get_xid()
-        self.__slider = Slider(xid, configuration)
-        self.__button_overlay = ButtonOverlay(xid)
-        self.__cv_player = CvPlayer(expand_path("media/demo/video1.mp4"), xid)
+        self.__cv_player = CvPlayer(xid, configuration)
 
     @staticmethod
     def __get_xid() -> int:
@@ -65,7 +60,6 @@ class Carrousel:
         configuration = configuration_file.read()
         # Update XScreenSaver configuration.
         configuration, configuration_changed = update_screensaver_configuration(configuration)
-        logger.error(f"CONFIGURATION CHANGED {configuration_changed}")
         # Save XScreensaver configuration if it has changes and set XScreenSaver restart flag.
         if configuration_changed:
             self.__restart_xscreensaver = True
@@ -116,10 +110,8 @@ class Carrousel:
             # Create slider and configuration monitor tasks.
             # Slider task shows slides and monitor task looking for configuration file updates and applies them.
             logger.info("Run Slider and monitor tasks")
-            #loop.create_task(self.__slider.run())
             #loop.create_task(self.__monitor_configuration())
-            #loop.create_task(self.__button_overlay.run())
-            loop.create_task(self.__cv_player.play())
+            loop.create_task(self.__cv_player.run())
             loop.run_forever()
 
         finally:
@@ -132,4 +124,4 @@ class Carrousel:
             # parameters has been changed.
             if self.__restart_xscreensaver:
                 logger.info("Restart XScreenSaver to refresh its configuration")
-                os.system("xscreensaver-command --restart")
+                os.system("xscreensaver-command -restart")
