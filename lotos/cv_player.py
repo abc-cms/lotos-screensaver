@@ -331,10 +331,7 @@ class CvPlayer:
 
 
     def __start_sliding(self):
-        initial_time = asyncio.get_running_loop().time()
 
-        configuration_updater = ConfigurationUpdater(initial_time, update_period)
-        player = Player()
 
         while True:
             configuration = deepcopy(self.__configuration)
@@ -347,10 +344,16 @@ class CvPlayer:
                     break
 
 
-    async def __slide_new(self):
+    def run_new(self):
         loop = asyncio.get_running_loop()
 
-        for timestamp, operation in self.__start_sliding():
+        initial_time = asyncio.get_running_loop().time()
+
+        configuration_manager = ConfigurationUpdater(initial_time, update_period)
+        frame_manager = FrameManager(initial_time, screen_size, configuration)
+        overlay_manager = OverlayManager(initial_time)
+
+        for timestamp, operation in OperationManager(configuration_updater, player, overlay_manager):
             if operation == "draw":
                 self.__draw_new()
 
