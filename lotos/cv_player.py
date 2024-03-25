@@ -1,11 +1,17 @@
 import cv2
 import asyncio
 from loguru import logger
-from Xlib import display, X, Xutil, threaded
+from Xlib import X, Xutil, threaded
+from Xlib.display import Display
 import numpy as np
 from dataclasses import dataclass
-from PIL import Image
-from time import sleep
+from PIL import Image, ImageDraw
+from time import sleep, time
+from typing import Any, Dict, Tuple
+from copy import deepcopy
+from datetime import datetime
+import os
+from random import randrange
 
 @dataclass
 class Button:
@@ -16,7 +22,7 @@ class Button:
     radius: int
     color: Tuple[int, int, int]
     text_color: Tuple[int, int, int]
-    text: string
+    text: str
 
 class AnimationCurve:
     __start: Button
@@ -24,7 +30,7 @@ class AnimationCurve:
     __duration: float
     __steps: int
 
-    def __init__(self, start: Button, end: button, duration: float, steps: int):
+    def __init__(self, start: Button, end: Button, duration: float, steps: int):
         assert duration > 0
         assert steps > 0
 
@@ -44,53 +50,71 @@ class AnimationCurve:
         width_delta = (end.width - start.width) / steps
         height_delta = (end.height - start.height) / steps
 
+        left, top, width, height = start.left, start.top, start.width, start.height
+
         for i in range(1, steps + 1):
-            left += i * left_delta
-            top += i * left_delta
-            width += i * width_delta
-            height += i * height_delta
-            yield step_duration, Button(left, top, width, height, start.radius, start.color, start.text_color, start.text)
+            yield step_duration, Button(
+                int(left + i * left_delta),
+                int(top + i * top_delta),
+                int(width + i * width_delta),
+                int(height + i * height_delta),
+                start.radius,
+                start.color,
+                start.text_color,
+                start.text
+            )
 
 class CvPlayer:
-    def __init__(self, window_id, configuration: Dict[str, Any]):
-        logger.info(f"Initialize Slider using xid={window_id}")
+    __configuration: Dict[str, Any]
+    __media: Any
+    __terminate_player: bool
+
+    __display: Display
+    __screen_size: Tuple[int, int]
+    __screensaver_window: Any
+    __window: Any
+    __window_id: int
+    __pixmap: Any
+    __gc: Any
+
+    __overlay: Any
+
+    def __init__(self, window_id: int, configuration: Dict[str, Any]):
+        logger.info(f"Initialize Player using xid={window_id}")
+        self.__is_playing_video = False
+        self.__overlay = None
+
         # Initialize configuration and create player.
-        self.__configuration = deepcopy(configuration)):
-        self.__path = path
-        self.__initial_time = None
-        self.__video = None
-        self.__delay = None
+        self.__configuration = deepcopy(configuration)
+        self.__media = None
         self.__window_id = window_id
 
-        self.__display = display.Display()
-        self.__window = self.__display.create_resource_object("window", window_id)
-
-
-        # Child window
-        width, height = 500, 500
-        self.__child_window = self.__window.create_window(
-            50, 50, width, height, 0,
-            self.__display.screen().root_depth,
-            X.CopyFromParent,
-            X.CopyFromParent,
-            background_pixel=self.__display.screen().white_pixel,
+        # Initialize display, attach to the screensaver window and create a child one
+        # that will be used to draw media.
+        display = self.__display = Display()
+        self.__screensaver_window = self.__display.create_resource_object("window", window_id)
+        # Determine screen size, create child window and map it.
+        screen = display.screen()
+        geometry = self.__screensaver_window.get_geometry()
+        width, height = self.__screen_size = geometry.width, geometry.height
+        window = self.__window = self.__screensaver_window.create_window(
+            0, 0, width, height, 0, screen.root_depth,
+            X.CopyFromParent, X.CopyFromParent,
+            background_pixel=screen.black_pixel,
             colormap=X.CopyFromParent,
+            event_mask=X.ExposureMask
         )
-        self.__child_window.map()
-        self.__bgpm = bgpm = self.__child_window.create_pixmap(320, 320, self.__display.screen().root_depth)
-        self.__bggc = bggc = self.__child_window.create_gc(foreground=0, background=0)
+        window.map()
+        self.__pixmap = self.__window.create_pixmap(width, height, self.__display.screen().root_depth)
+        self.__gc = self.__window.create_gc(foreground=0, background=0)
 
-        logger.info(f"Initialize ButtonOverlay using xid={window_id}")
+        # Set termination flag to false initially.
         self.__terminate_player = False
-        self.__counter = 0
 
     def terminate(self):
-        logger.info("Terminate slider")
-        if self.__player is not None:
-            # Terminate and clean up player.
-            self.__player.terminate()
-            self.__player = None
-            logger.info("Slider terminated")
+        logger.info("Terminate player")
+        if self.__window is not None:
+            self.__window.unmap()
 
     def update_configuration(self, configuration: Dict[str, Any]):
         logger.info("Update Slider configuration")
@@ -99,103 +123,203 @@ class CvPlayer:
             self.__configuration = deepcopy(configuration)
             logger.info("Slider configuration updated")
 
-
     async def run(self):
         try:
-            while True:
-                configuration = self.__configuration
-
-                # Process each entry in media.
-                for media in configuration["media_files"]:
-                    # Finish if player is empty.
-                    if self.__player is None:
-                        logger.warning("Player is unavailable, exiting Slider")
-                        return
-                    # Get new configuration and start slide show from the beginning if there are any changes.
-                    if configuration != self.__configuration:
-                        logger.info("Configuration updated, restart sliding")
-                        break
-
-                    # Check if we should show black screen or slide show.
-                    if self.__is_active_period(datetime.now().time(),
-                                               self.__configuration["screensaver_settings"]["start_time"],
-                                               self.__configuration["screensaver_settings"]["end_time"]):
-                        path = media["path"]
-                        # Skip invalid media.
-                        if not os.path.isfile(path):
-                            logger.error(f"No media file found: {path}, skipping")
-                            continue
-
-                        if media["type"] == "video":
-                            # Play video.
-                            await self.__player.play_video(path)
-                        else:
-                            # Show image.
-                            await self.__player.show_image(path, media["time"])
-                    else:
-                        # Show black screen.
-                        await self.__player.show_blank_screen(30)
+            await asyncio.gather(
+                asyncio.to_thread(self.__x_loop),
+                self.__update_overlay(),
+                self.__slide()
+            )
         finally:
-            logger.info("Finalize Slider")
-            # Terminate slide show.
             self.terminate()
 
-
-    async def draw_frame(self):
+    async def __slide(self):
         while True:
-            self.__counter += 1
-            x = self.__x
-            await asyncio.sleep(1.0 / 25.0)
+            configuration = deepcopy(self.__configuration)
 
-    def __play_video(self):
-        video  = cv2.VideoCapture(self.__path)
-        delay = 1.0 / video.get(cv2.CAP_PROP_FPS)
+            # Process each entry in media.
+            for media in configuration["media_files"]:
+                # Get new configuration and start slide show from the beginning if there are any changes.
+                if configuration != self.__configuration:
+                    logger.info("Configuration updated, restart sliding")
+                    break
 
-        while not self.__terminate_player:
-            self.__x = x = 320
-            pil_data = Image.fromarray(cv2.resize(video.read()[1], (x, x)))
-            self.__bgpm.put_pil_image(self.__bggc, 0, 0, pil_data)
-            self.__bgpm.fill_rectangle(self.__bggc, self.__counter, self.__counter, 50, 50)
-            self.__child_window.copy_area(self.__bggc, self.__bgpm, 0, 0, x, x, 100, 100)
-            self.__counter += 1
-            self.__display.sync()
-            sleep(delay)
+                # Check if we should show black screen or slide show.
+                if self.__is_active_period(datetime.now().time(),
+                                           configuration["screensaver_settings"]["start_time"],
+                                           configuration["screensaver_settings"]["end_time"]):
+                    path = media["path"]
+                    # Skip invalid media.
+                    if not os.path.isfile(path):
+                        logger.error(f"No media file found: {path}, skipping")
+                        continue
+
+                    if media["type"] == "video":
+                        # Play video.
+                        await self.__play(path)
+                    else:
+                        # Show image.
+                        await self.__show(path, media["time"])
+                else:
+                    # Show black screen (break every 30 seconds to check if configuration has been changed
+                    # or to check inactivity time).
+                    await self.__show_blank_screen(30)
+
+
+    async def __play(self, path: str):
+        try:
+            video  = cv2.VideoCapture(path)
+
+            if video.isOpened():
+                self.__is_playing_video = True
+                delay = 1.0 / video.get(cv2.CAP_PROP_FPS)
+                current_frame_time = asyncio.get_running_loop().time()
+
+                while True:
+                    next_frame_time = current_frame_time = current_frame_time + delay
+                    result, frame = video.read()
+                    if not result:
+                        break
+
+                    self.__media = frame
+                    self.__update_window()
+
+                    actual_delay = next_frame_time - asyncio.get_running_loop().time()
+                    if actual_delay > 0:
+                        await asyncio.sleep(actual_delay)
+            else:
+                logger.error(f"Unable to process video file {path}")
+        finally:
+            self.__is_playing_video = False
+            video.release()
+
+    def __update_window(self):
+        self.__draw()
+        #self.__window.clear_area(0, 0, self.__screen_size[0], self.__screen_size[1])
+
+    async def __show(self, path: str, duration: float):
+        self.__media = cv2.cvtColor(cv2.imread(path), cv2.COLOR_BGR2RGB)
+        self.__update_window()
+        await asyncio.sleep(duration)
+
+    def __draw(self):
+        frame = np.zeros((self.__screen_size[1], self.__screen_size[0], 3), dtype=np.uint8)
+
+        pixmap = gc = None
+
+        try:
+            sw, sh = self.__screen_size
+
+            if self.__media is not None:
+                #raise RuntimeError(f"Media {self.__media}")
+                media = self.__media
+                screen_ratio = sh / sw
+                mh, mw = media.shape[:2]
+                media_ratio = mh / mw
+                if screen_ratio > media_ratio:
+                    media = cv2.resize(media, (sw, int(sw / mw * mh)))
+                else:
+                    media = cv2.resize(media, (int(sh / mh * mw), sh))
+                mh, mw = media.shape[:2]
+                ox, oy = (sw - mw) // 2, (sh - mh) // 2
+                frame[oy:oy + mh, ox:ox + mw] = media
+
+            image = self.__postprocess_media(frame)
+            # Create window pixmap.
+            pixmap = self.__pixmap
+            gc = self.__gc
+            pixmap.put_pil_image(gc, 0, 0, image)
+            self.__window.copy_area(gc, pixmap, 0, 0, self.__screen_size[0], self.__screen_size[1], 0, 0)
+            self.__display.flush()
+        finally:
+            #if pixmap is not None:
+            #    pixmap.free()
+            #if gc is not None:
+            #    gc.free()
+            ...
+
+    def __build_new_button(self) -> Button:
+        x_offset = randrange(215)
+        y_offset = randrange(215)
+
+        return Button(
+            left=50 + x_offset,
+            top=self.__screen_size[1] - 50 - 150,
+            width=self.__screen_size[0] - 100 - 2 * x_offset,
+            height=150,
+            radius=15,
+            color=(0, 255, 0),
+            text_color=(255, 255, 255),
+            text="Press button\nto enter menu"
+        )
 
     async def __update_overlay(self):
-        self.__overlay_position = None
-        self.__overlay_size = None
-
         self.__overlay_animation_duration = 1.0
         self.__overlay_switch_duration = 5.0
 
-        animate: bool = False
-        sleep_duration: float
+        overlay_frames_iterator = None
 
-        try:
-            while True:
-                sleep_duration = 0.1 if animate else self.__overlay_switch_duration
-                await asyncio.sleep(sleep_duration)
-        finally:
-            ...
+        current_frame_time = asyncio.get_running_loop().time()
 
-    def __draw_overlay(self, frame: np.ndarray):
-        ...
+        while True:
+            if overlay_frames_iterator is None:
+                if self.__overlay is None:
+                    self.__overlay = self.__build_new_button()
+                delay = self.__overlay_switch_duration
+                overlay_frames_iterator = iter(AnimationCurve(self.__overlay, self.__build_new_button(), 1.0, 20))
+            else:
+                try:
+                    delay, self.__overlay = next(overlay_frames_iterator)
+                except StopIteration:
+                    overlay_frames_iterator = None
+                    continue
+            if not self.__is_playing_video:
+                self.__update_window()
+
+            next_frame_time = current_frame_time = current_frame_time + delay
+            actual_delay = next_frame_time - asyncio.get_running_loop().time()
+
+            #if actual_delay < 0 or delay < 0.02:
+            #    raise RuntimeError(f"{delay}, {actual_delay}!!!!!!!!!!!!")
+            if actual_delay > 0:
+                await asyncio.sleep(actual_delay)
+
+    def __postprocess_media(self, frame: np.ndarray) -> np.ndarray:
+        overlay: Button = self.__overlay
+        image = Image.fromarray(frame)
+
+        if overlay is not None:
+            left, top, width, height, radius, color = overlay.left, overlay.top, overlay.width, overlay.height, overlay.radius, overlay.color
+            image_draw = ImageDraw.Draw(image)
+            image_draw.rounded_rectangle((left, top, left + width, top + height), radius, fill=color)
+
+        return image
+
+        # Draw intenal area.
+        #cv2.rectangle(frame, (left, top + radius), (left + width, top + height - 2 * radius), color, -1)
+        #cv2.rectangle(frame, (left + radius, top), (left + width - 2 * radius, top + height), color, -1)
+        # Draw four rounded corners.
+        #cv2.ellipse(frame, (left + radius, top + radius), (radius, radius), 0, 0, 90, overlay.color, -1)
+        #cv2.ellipse(frame, (left + width - radius, top + radius), (radius, radius), 90, 0, 90, overlay.color, -1)
+        #cv2.ellipse(frame, (left + width - radius, top + height - radius), (radius, radius), 180, 0, 90, overlay.color, -1)
+        #cv2.ellipse(frame, (left + radius, top + height - radius), (radius, radius), 270, 0, 90, overlay.color, -1)
+        # Draw text.
 
     async def play(self):
-        try:
-            logger.info("Start XLIB loop")
-            await asyncio.gather(asyncio.to_thread(self.__loop), asyncio.to_thread(self.__play_video))
+        logger.info("Start X loop")
+        await asyncio.gather(asyncio.to_thread(self.__loop), asyncio.to_thread(self.__play_video))
 
-        finally:
-            self.__child_window.unmap()
-            self.__child_window.destroy()
-            self.__window.destroy()
-            self.__window.unmap()
+    def __x_loop(self):
+        while not self.__terminate_player:
+            event = self.__display.next_event()
 
-    def __loop(self):
-        while True:
-            logger.info("!!!!!!!!!!!!!!!!!!!!!!!!")
-            e = self.__display.next_event()
+            if event.type == X.Expose:
+                self.__draw()
+            elif event.type == X.DestroyNotify:
+                raise RuntimeError("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                break
+
+        logger.info("Stop X loop")
 
     async def show_blank_screen(self, duration: int):
         # Just show black screen.
@@ -204,3 +328,66 @@ class CvPlayer:
     @staticmethod
     def __is_active_period(now: time, start_time: time, end_time: time) -> bool:
         return (start_time <= end_time) == (start_time <= now < end_time)
+
+
+    def __start_sliding(self):
+        initial_time = asyncio.get_running_loop().time()
+
+        configuration_updater = ConfigurationUpdater(initial_time, update_period)
+        player = Player()
+
+        while True:
+            configuration = deepcopy(self.__configuration)
+
+            # Process each entry in media.
+            for media in configuration["media_files"]:
+                # Get new configuration and start slide show from the beginning if there are any changes.
+                if configuration != self.__configuration:
+                    logger.info("Configuration updated, restart sliding")
+                    break
+
+
+    async def __slide_new(self):
+        loop = asyncio.get_running_loop()
+
+        for timestamp, operation in self.__start_sliding():
+            if operation == "draw":
+                self.__draw_new()
+
+            current_time = loop.time()
+            delay = timestamp - current_time
+            if delay > 0:
+                await asyncio.sleep(delay)
+
+
+
+        while True:
+            configuration = deepcopy(self.__configuration)
+
+            # Process each entry in media.
+            for media in configuration["media_files"]:
+                # Get new configuration and start slide show from the beginning if there are any changes.
+                if configuration != self.__configuration:
+                    logger.info("Configuration updated, restart sliding")
+                    break
+
+                # Check if we should show black screen or slide show.
+                if self.__is_active_period(datetime.now().time(),
+                                           configuration["screensaver_settings"]["start_time"],
+                                           configuration["screensaver_settings"]["end_time"]):
+                    path = media["path"]
+                    # Skip invalid media.
+                    if not os.path.isfile(path):
+                        logger.error(f"No media file found: {path}, skipping")
+                        continue
+
+                    if media["type"] == "video":
+                        # Play video.
+                        await self.__play(path)
+                    else:
+                        # Show image.
+                        await self.__show(path, media["time"])
+                else:
+                    # Show black screen (break every 30 seconds to check if configuration has been changed
+                    # or to check inactivity time).
+                    await self.__show_blank_screen(30)
