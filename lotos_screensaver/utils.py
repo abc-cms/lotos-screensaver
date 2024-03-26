@@ -10,3 +10,7 @@ def expand_path(path: str) -> str:
             path = os.path.join(os.path.dirname(os.path.realpath(sys.argv[0])), path)
 
     return os.path.expandvars(os.path.normpath(path))
+
+
+def get_xid() -> int:
+    return int(os.environ["XSCREENSAVER_WINDOW"], 16)

@@ -86,7 +86,7 @@ def adjust_configuration(configuration: Dict[str, Any]) -> Dict[str, Any]:
 def update_screensaver_configuration(xscreensaver_configuration: Dict[str, Any], command: Union[str, None] = None) -> \
         Tuple[Dict[str, str], bool]:
     configuration_changed = False
-    # Fetch and validate internal and SXcreenSaver configurations.
+    # Fetch and validate internal and XScreenSaver configurations.
     xscreensaver_configuration = deepcopy(xscreensaver_configuration)
     internal_configuration = read_configuration()
     validate_configuration(internal_configuration)

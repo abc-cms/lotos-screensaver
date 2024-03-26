@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from lotos import Carrousel
+from lotos_screensaver import Screensaver
 
 if __name__ == "__main__":
-    Carrousel().run()
+    Screensaver().run()
