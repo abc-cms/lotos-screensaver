@@ -1,9 +1,11 @@
 from typing import Any, Optional, Tuple
 
 import numpy as np
-from PIL import Image
+from PIL.Image import Image, fromarray
 from Xlib import X
 from Xlib.display import Display
+from Xlib.xobject.drawable import Pixmap, Window
+from Xlib.xobject.fontable import GC
 from loguru import logger
 
 
@@ -11,10 +13,10 @@ class ScreenManager:
     __xid: int
     __screen_size: Tuple[int, int]
     __display: Display
-    __screensaver_window: Any
-    __window: Any
-    __pixmap: Any
-    __gc: Any
+    __screensaver_window: Window
+    __window: Window
+    __pixmap: Pixmap
+    __gc: GC
     __image: Optional[Image]
     __default_image: Image
 
@@ -39,7 +41,7 @@ class ScreenManager:
         window.map()
 
         self.__image = None
-        self.__default_image = Image.fromarray(np.zeros((height, width, 3)))
+        self.__default_image = fromarray(np.zeros((height, width, 3), dtype=np.uint8))
         self.__pixmap = self.__window.create_pixmap(width, height, self.__display.screen().root_depth)
         self.__gc = self.__window.create_gc(foreground=0, background=0)
         self.redraw()

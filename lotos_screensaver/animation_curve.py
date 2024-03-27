@@ -1,4 +1,4 @@
-from lotos_screensaver import Button
+from .button import Button
 
 
 class AnimationCurve:

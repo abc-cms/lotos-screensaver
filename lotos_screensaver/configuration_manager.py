@@ -2,7 +2,7 @@ from typing import Any, Dict
 
 from xscreensaver_config.ConfigParser import ConfigParser
 
-from .configuration import get_xscreensaver_config_file, update_screensaver_configuration
+from .configuration import adjust_configuration, get_xscreensaver_config_file, read_configuration, update_screensaver_configuration
 from .manager import Manager
 
 
@@ -38,6 +38,8 @@ class ConfigurationManager(Manager):
             self.__has_external_changes = True
             configuration_file.update(configuration)
             configuration_file.save()
+
+        self.__configuration = adjust_configuration(read_configuration())
 
     @property
     def has_external_changes(self) -> bool:

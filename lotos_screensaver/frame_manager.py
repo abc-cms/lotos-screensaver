@@ -11,7 +11,7 @@ from loguru import logger
 
 from lotos_screensaver import Activity
 from .manager import Manager
-
+from .utils import expand_path
 
 class Media(metaclass=ABCMeta):
     _frame: np.ndarray
@@ -67,6 +67,7 @@ class Video(Media):
                 self.__video.release()
                 break
 
+            self.__frame = cv2.cvtColor(self.__frame, cv2.COLOR_BGR2RGB)
             yield self.__frame
 
 
