@@ -3,12 +3,13 @@ from threading import Event, Thread
 from time import monotonic
 from typing import Optional
 from PIL.Image import Image, fromarray
-
+from datetime import datetime
+import os
 import cv2
 import numpy as np
 from loguru import logger
 
-from lotos_screensaver import ConfigurationManager, FrameManager, OperationManager, OverlayManager, ScreenManager
+from lotos_screensaver import Activity, ConfigurationManager, FrameManager, OperationManager, OverlayManager, ScreenManager
 from lotos_screensaver.configuration import get_log_file
 from lotos_screensaver.utils import get_xid
 
@@ -25,13 +26,8 @@ class Screensaver:
         self.__configure_logger()
 
         self.__screen_manager = ScreenManager(get_xid())
-        screen_size = self.__screen_manager.screen_size
-
         initial_time = monotonic()
         self.__configuration_manager = ConfigurationManager(initial_time)
-        configuration = self.__configuration_manager.configuration
-        self.__frame_manager = FrameManager(initial_time, configuration)
-        self.__overlay_manager = OverlayManager(initial_time, screen_size)
 
         self.__update_thread = None
         self.__exit_update_thread_event = None
@@ -45,43 +41,75 @@ class Screensaver:
         self.__run_screen_loop()
         self.__update_thread.join()
 
+        if self.__configuration_manager.has_external_changes:
+            pid = os.fork()
+            if pid == 0:
+                sleep(5)  # Wait for some time parent process to be finished.
+                os.system("xscreensaver-command -restart")
+
     def __run_screen_loop(self):
         self.__screen_manager.run()
 
     def __run_update_loop(self):
-        for timestamp, operations in OperationManager(self.__configuration_manager, self.__frame_manager,
-                                                      self.__overlay_manager):
-            current_timestamp = monotonic()
-            for operation in operations:
-                operation_type, parameters = operation["type"], operation["parameters"]
-                if operation_type == "update_configuration":
-                    self.__update_configuration(current_timestamp)
-                elif operation_type == "update_overlay":
-                    self.__update_overlay(*parameters)
-                elif operation_type == "update_frame":
-                    self.__update_frame(*parameters)
-                elif operation_type == "redraw":
-                    self.__redraw(current_timestamp)
+        run_loop = True
 
-            delay = timestamp - monotonic()
+        while run_loop:
+            initial_time = monotonic()
+            configuration = self.__configuration_manager.configuration
+            self.__frame_manager = FrameManager(initial_time, self.__configuration_manager.configuration)
+            self.__overlay_manager = OverlayManager(initial_time, self.__screen_manager.screen_size)
 
-            if delay > 0:
-                self.__exit_update_thread_event.wait(timeout=delay)
-            if self.__exit_update_thread_event.is_set():
-                break
+            activity = Activity(
+                (
+                    (
+                        configuration["screensaver_settings"]["start_time"],
+                        configuration["screensaver_settings"]["end_time"]
+                    ),
+                )
+            )
 
+            is_active = activity.is_active(datetime.now())
 
-    def __update_configuration(self, timestamp: float):
-        self.__configuration_manager.update()
-        configuration = self.__configuration_manager.configuration
-        self.__frame_manager.update_configuration(timestamp, configuration)
-        self.__overlay_manager.update_configuration(timestamp, configuration)
+            if is_active:
+                operation_manager = OperationManager(self.__configuration_manager, self.__frame_manager, self.__overlay_manager)
+            else:
+                operation_manager = OperationManager(self.__configuration_manager)
+                self.__screen_manager.update_image(None)
+                self.__screen_manager.redraw()
 
-    def __update_overlay(self, timestamp: float):
-        self.__overlay_manager.update(timestamp)
+            for timestamp, operations in operation_manager:
+                if self.__exit_update_thread_event.is_set():
+                    run_loop = False
+                    break
 
-    def __update_frame(self, timestamp: float):
-        self.__frame_manager.update(timestamp)
+                if activity.is_active(datetime.now()) != is_active:
+                    break
+
+                current_timestamp = monotonic()
+                for operation in operations:
+                    need_restart = True
+                    operation_type, parameters = operation["type"], operation["parameters"]
+
+                    if operation_type == "update_configuration":
+                        self.__configuration_manager.update()
+                        if self.__configuration_manager.has_internal_changes:
+                            break
+                    elif operation_type == "update_overlay":
+                        self.__overlay_manager.update(*parameters)
+                    elif operation_type == "update_frame":
+                        self.__frame_manager.update(*parameters)
+                    elif operation_type == "redraw":
+                        self.__redraw(current_timestamp)
+                else:
+                    need_restart = False
+
+                if need_restart:
+                    break
+
+                delay = timestamp - monotonic()
+                if delay > 0:
+                    self.__exit_update_thread_event.wait(timeout=delay)
+
 
     def __redraw(self, timestamp: float):
         image = self.__cook_player()

@@ -136,8 +136,9 @@ class FrameManager(Manager):
                 self.__media = next(self.__media_iterator)
                 self.__frame_iterator = iter(self.__media)
                 self.__frame = next(self.__frame_iterator)
+                self.initial_timestamp = timestamp
 
-            self.initial_timestamp = next_timestamp
+            self.initial_timestamp = self.next_timestamp(timestamp)
 
     @property
     def is_playing_video(self) -> bool:

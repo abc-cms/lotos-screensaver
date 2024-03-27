@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from xscreensaver_config.ConfigParser import ConfigParser
 
@@ -9,12 +9,15 @@ from .manager import Manager
 class ConfigurationManager(Manager):
     UPDATE_DURATION: float = 10  # Seconds
 
-    __configuration: Dict[str, Any]
+    __configuration: Optional[Dict[str, Any]]
     __has_external_changes: bool
+    __has_internal_changes: bool
 
     def __init__(self, initial_timestamp: float):
         super().__init__(initial_timestamp)
+        self.__configuration = None
         self.__has_external_changes = False
+        self.__has_internal_changes = False
         self.update()
 
     def is_update_required(self, timestamp: float) -> bool:
@@ -39,8 +42,14 @@ class ConfigurationManager(Manager):
             configuration_file.update(configuration)
             configuration_file.save()
 
-        self.__configuration = adjust_configuration(read_configuration())
+        configuration = adjust_configuration(read_configuration())
+        self.__has_internal_changes = self.__configuration is None or self.__configuration != configuration
+        self.__configuration = configuration
 
     @property
     def has_external_changes(self) -> bool:
         return self.__has_external_changes
+
+    @property
+    def has_internal_changes(self) -> bool:
+        return self.__has_internal_changes
