@@ -1,7 +1,6 @@
 import os
 from abc import ABCMeta, abstractmethod
 from copy import deepcopy
-from datetime import datetime
 from itertools import cycle
 from typing import Any, Dict, Iterator, List, Optional
 
@@ -9,9 +8,8 @@ import cv2
 import numpy as np
 from loguru import logger
 
-from lotos_screensaver import Activity
 from .manager import Manager
-from .utils import expand_path
+
 
 class Media(metaclass=ABCMeta):
     _frame: np.ndarray
@@ -123,7 +121,6 @@ class FrameManager(Manager):
         return timestamp >= self.initial_timestamp + self.duration(timestamp)
 
     def duration(self, timestamp: float) -> float:
-        now_time = datetime.now()
         return self.__media.duration
 
     def update(self, timestamp: float):

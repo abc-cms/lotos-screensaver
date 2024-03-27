@@ -2,7 +2,8 @@ from typing import Any, Dict, Optional
 
 from xscreensaver_config.ConfigParser import ConfigParser
 
-from .configuration import adjust_configuration, get_xscreensaver_config_file, read_configuration, update_screensaver_configuration
+from .configuration import adjust_configuration, get_xscreensaver_config_file, read_configuration, \
+    update_screensaver_configuration
 from .manager import Manager
 
 

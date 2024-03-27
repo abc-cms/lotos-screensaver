@@ -1,4 +1,4 @@
-from typing import Any, Optional, Tuple
+from typing import Optional, Tuple
 
 import numpy as np
 from PIL.Image import Image, fromarray
@@ -57,7 +57,7 @@ class ScreenManager:
 
         logger.info("Stop X loop")
 
-    def update_image(self, image: Image):
+    def update_image(self, image: Optional[Image]):
         self.__image = image
 
     def redraw(self):

@@ -1,12 +1,12 @@
-from copy import deepcopy
-from datetime import datetime
 from random import randrange
-from typing import Any, Dict, Optional, Tuple
+from typing import Tuple
+
 import numpy as np
+from PIL.Image import fromarray
 from PIL.ImageDraw import Draw
 from PIL.ImageFont import truetype
-from PIL.Image import Image, fromarray
-from lotos_screensaver import Activity, AnimationCurve, Button
+
+from lotos_screensaver import AnimationCurve, Button
 from .manager import Manager
 
 
@@ -19,7 +19,7 @@ class OverlayManager(Manager):
     __BUTTON_HEIGHT: int = 100
     __BUTTON_RADIUS: int = 15
     __BUTTON_COLOR: Tuple[int, int, int] = 0, 255, 0
-    __BUTTON_TEXT: str = "Press to enter\nmenu"
+    __BUTTON_TEXT: str = u"Прикоснитесь к экрану чтобы\nразблокировать"
     __BUTTON_TEXT_COLOR: Tuple[int, int, int] = 255, 255, 255
     __BUTTON_TEXT_FONT: str = "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf"
     __BUTTON_TEXT_SIZE: int = 30
@@ -38,14 +38,15 @@ class OverlayManager(Manager):
         super().__init__(initial_timestamp)
 
         self.__screen_size = screen_size
-        self.update_configuration(initial_timestamp, None)
+        self.update_configuration(initial_timestamp)
 
         # Initialize and cache constant drawings.
         # Left and right borders.
         minimal_button_frame = np.zeros((self.__BUTTON_HEIGHT, 2 * self.__BUTTON_RADIUS, 3), dtype=np.uint8)
         image = fromarray(minimal_button_frame)
         image_draw = Draw(image)
-        image_draw.rounded_rectangle((0, 0, 2 * self.__BUTTON_RADIUS, self.__BUTTON_HEIGHT), self.__BUTTON_RADIUS, fill=self.__BUTTON_COLOR)
+        image_draw.rounded_rectangle((0, 0, 2 * self.__BUTTON_RADIUS, self.__BUTTON_HEIGHT), self.__BUTTON_RADIUS,
+                                     fill=self.__BUTTON_COLOR)
         minimal_button_frame = np.array(image)
         self.__left_border_cached = minimal_button_frame[:, :self.__BUTTON_RADIUS].copy()
         self.__right_border_cached = minimal_button_frame[:, self.__BUTTON_RADIUS:].copy()
@@ -59,7 +60,7 @@ class OverlayManager(Manager):
         image_draw.text((0, 0), self.__BUTTON_TEXT, self.__BUTTON_TEXT_COLOR, font, align="center")
         self.__text_cached = np.array(image)
 
-    def update_configuration(self, timestamp: float, configuration: Optional[Dict[str, Any]]):
+    def update_configuration(self, timestamp: float):
         self.__reset(timestamp)
 
     def __reset(self, timestamp: float):
@@ -72,8 +73,6 @@ class OverlayManager(Manager):
 
         self.__current_button = self.__build_new_button()
         self.__next_button = self.__build_new_button()
-
-        self.__is_animating = False
 
     def is_animating(self, timestamp: float) -> bool:
         return self.__animation_interval[0] <= timestamp < self.__animation_interval[1]
@@ -122,7 +121,6 @@ class OverlayManager(Manager):
 
     def update(self, timestamp: float):
         if timestamp >= self.__animation_interval[1]:
-            self.__is_animating = False
             self.initial_timestamp = self.__animation_interval[1]
 
             sss = self.__animation_interval
@@ -136,6 +134,6 @@ class OverlayManager(Manager):
             self.__next_button = self.__build_new_button()
 
         elif self.__animation_interval[0] <= timestamp < self.__animation_interval[1]:
-            self.__is_animating = True
-            self.initial_timestamp = self.__animation_interval[0] + ((timestamp - self.__animation_interval[0])
-                // self.ANIMATION_STEP_DURATION) * self.ANIMATION_STEP_DURATION
+            self.initial_timestamp = \
+                self.__animation_interval[0] + ((timestamp - self.__animation_interval[0])
+                                                // self.ANIMATION_STEP_DURATION) * self.ANIMATION_STEP_DURATION

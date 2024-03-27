@@ -29,12 +29,14 @@ class OperationManager:
             current_timestamp = monotonic()
 
             # Check if overlay animation is required.
-            is_overlay_update_required = self.__overlay_manager is not None and self.__overlay_manager.is_update_required(current_timestamp)
+            is_overlay_update_required = \
+                self.__overlay_manager is not None and self.__overlay_manager.is_update_required(current_timestamp)
             if is_overlay_update_required:
                 operations.append({"type": "update_overlay", "parameters": (current_timestamp,)})
 
             # Check if frame update is required.
-            is_frame_update_required = self.__frame_manager is not None and self.__frame_manager.is_update_required(current_timestamp)
+            is_frame_update_required = self.__frame_manager is not None and self.__frame_manager.is_update_required(
+                current_timestamp)
             if is_frame_update_required:
                 operations.append({"type": "update_frame", "parameters": (current_timestamp,)})
 
@@ -49,6 +51,7 @@ class OperationManager:
 
             # Calculate the next timestamp.
             timestamps = []
+            next_frame_timestamp = 0
             if self.__frame_manager is not None:
                 next_frame_timestamp = self.__frame_manager.next_timestamp(current_timestamp)
                 timestamps.append(next_frame_timestamp)
@@ -57,7 +60,9 @@ class OperationManager:
             timestamps.append(self.__configuration_manager.next_timestamp(current_timestamp))
 
             if self.__frame_manager is not None and self.__overlay_manager is not None:
-                if self.__frame_manager.is_playing_video and (self.__frame_manager.duration(current_timestamp) < self.__overlay_manager.duration(current_timestamp)):
+                if self.__frame_manager.is_playing_video and \
+                        (self.__frame_manager.duration(current_timestamp) <
+                         self.__overlay_manager.duration(current_timestamp)):
                     next_timestamp = next_frame_timestamp
                 else:
                     next_timestamp = min(timestamps)

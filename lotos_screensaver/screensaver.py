@@ -1,15 +1,17 @@
-import signal
-from threading import Event, Thread
-from time import monotonic
-from typing import Optional
-from PIL.Image import Image, fromarray
-from datetime import datetime
 import os
+import signal
+from datetime import datetime
+from threading import Event, Thread
+from time import monotonic, sleep
+from typing import Optional
+
 import cv2
 import numpy as np
+from PIL.Image import fromarray
 from loguru import logger
 
-from lotos_screensaver import Activity, ConfigurationManager, FrameManager, OperationManager, OverlayManager, ScreenManager
+from lotos_screensaver import Activity, ConfigurationManager, FrameManager, OperationManager, OverlayManager, \
+    ScreenManager
 from lotos_screensaver.configuration import get_log_file
 from lotos_screensaver.utils import get_xid
 
@@ -71,7 +73,8 @@ class Screensaver:
             is_active = activity.is_active(datetime.now())
 
             if is_active:
-                operation_manager = OperationManager(self.__configuration_manager, self.__frame_manager, self.__overlay_manager)
+                operation_manager = OperationManager(self.__configuration_manager, self.__frame_manager,
+                                                     self.__overlay_manager)
             else:
                 operation_manager = OperationManager(self.__configuration_manager)
                 self.__screen_manager.update_image(None)
@@ -109,7 +112,6 @@ class Screensaver:
                 delay = timestamp - monotonic()
                 if delay > 0:
                     self.__exit_update_thread_event.wait(timeout=delay)
-
 
     def __redraw(self, timestamp: float):
         image = self.__cook_player()
