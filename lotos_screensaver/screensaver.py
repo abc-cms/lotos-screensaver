@@ -22,6 +22,8 @@ class Screensaver:
     __exit_update_thread_event: Optional[Event]
 
     def __init__(self):
+        self.__configure_logger()
+
         self.__screen_manager = ScreenManager(get_xid())
         screen_size = self.__screen_manager.screen_size
 
@@ -34,28 +36,26 @@ class Screensaver:
         self.__update_thread = None
         self.__exit_update_thread_event = None
 
-        signal.signal(signal.SIGINT, self.__sigint_handler)
+        signal.signal(signal.SIGTERM, self.__sigint_handler)
 
     def run(self):
         self.__exit_update_thread_event = Event()
         self.__update_thread = Thread(target=self.__run_update_loop)
         self.__update_thread.start()
         self.__run_screen_loop()
+        self.__update_thread.join()
 
     def __run_screen_loop(self):
         self.__screen_manager.run()
 
     def __run_update_loop(self):
-        index = 0
         for timestamp, operations in OperationManager(self.__configuration_manager, self.__frame_manager,
                                                       self.__overlay_manager):
             current_timestamp = monotonic()
-            index += 1
             for operation in operations:
                 operation_type, parameters = operation["type"], operation["parameters"]
                 if operation_type == "update_configuration":
-                    ...
-                    #self.__update_configuration(current_timestamp)
+                    self.__update_configuration(current_timestamp)
                 elif operation_type == "update_overlay":
                     self.__update_overlay(*parameters)
                 elif operation_type == "update_frame":
@@ -116,7 +116,6 @@ class Screensaver:
             overlay.left, overlay.top, overlay.width, overlay.height, overlay.radius, overlay.color
         )
 
-        #image[top:top + height, left:left + width] = frame
         mask = frame.copy()
         mask[np.where(np.any(mask != [0, 0, 0], axis=-1))] = np.asarray((255, 255, 255), dtype=np.uint8)
         image[top:top + height, left:left + width] = np.bitwise_or(np.bitwise_and(
@@ -126,16 +125,10 @@ class Screensaver:
 
         return image
 
-        #image_draw = Draw(image)
-        #image_draw.rounded_rectangle((left, top, left + width, top + height), radius, fill=color)
-        #font = truetype("/usr/share/fonts/truetype/freefont/FreeSansBold.ttf", 36)
-        #size = font.getsize_multiline(overlay.text)
-        #image_draw.text((left + int((width - size[0]) / 2), top + int((height - size[1]) / 2)), overlay.text, overlay.text_color, font, align="center")
-        #return image
-
-    def __sigint_handler(self):
+    def __sigint_handler(self, signum, frame):
         if self.__exit_update_thread_event is not None:
             self.__exit_update_thread_event.set()
+        self.__screen_manager.close()
 
     @staticmethod
     def __configure_logger():

@@ -36,7 +36,7 @@ class ScreenManager:
             X.CopyFromParent, X.CopyFromParent,
             background_pixel=screen.black_pixel,
             colormap=X.CopyFromParent,
-            event_mask=X.ExposureMask
+            event_mask=X.ExposureMask | X.StructureNotifyMask
         )
         window.map()
 
@@ -63,6 +63,10 @@ class ScreenManager:
     def redraw(self):
         self.__pixmap.put_pil_image(self.__gc, 0, 0, self.__default_image if self.__image is None else self.__image)
         self.__window.copy_area(self.__gc, self.__pixmap, 0, 0, self.__screen_size[0], self.__screen_size[1], 0, 0)
+        self.__display.flush()
+
+    def close(self):
+        self.__window.destroy()
         self.__display.flush()
 
     @property

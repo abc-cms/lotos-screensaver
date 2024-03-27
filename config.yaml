@@ -1,7 +1,7 @@
 media_files:
   - type: image
     path: 'media/demo/image1.jpg'
-    time: 3 # seconds
+    time: 10 # seconds
   - type: video
     path: 'media/demo/video1.mp4'
   - type: image
