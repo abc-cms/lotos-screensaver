@@ -30,7 +30,6 @@ class OverlayManager(Manager):
 
     __screen_size: Tuple[int, int]
     __animation_interval: Tuple[float, float]
-    __activity: Activity
     __current_button: Button
     __next_button: Button
     __is_animated: bool

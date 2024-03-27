@@ -95,11 +95,10 @@ class MediaList:
 
 class FrameManager(Manager):
     __configuration: Dict[str, Any]
-    __activity: Activity
     __media_iterator: Iterator[Media]
     __media: Media
     __frame_iterator: Iterator[np.ndarray]
-    __frame: Optional[np.ndarray]
+    __frame: np.ndarray
 
     def __init__(self, initial_timestamp: float, configuration: Dict[str, Any]):
         super().__init__(initial_timestamp)
@@ -107,14 +106,6 @@ class FrameManager(Manager):
 
     def update_configuration(self, timestamp: float, configuration: Dict[str, Any]):
         self.__configuration = deepcopy(configuration)
-        self.__activity = Activity(
-            (
-                (
-                    self.__configuration["screensaver_settings"]["start_time"],
-                    self.__configuration["screensaver_settings"]["end_time"]
-                ),
-            )
-        )
         self.__reset(timestamp)
 
     def __reset(self, timestamp: float):
@@ -122,10 +113,7 @@ class FrameManager(Manager):
         self.__media_iterator = iter(MediaList(self.__configuration["media_files"]))
         self.__media = next(self.__media_iterator)
         self.__frame_iterator = iter(self.__media)
-        if self.__activity.is_active(datetime.now()):
-            self.__frame = next(self.__frame_iterator)
-        else:
-            self.__frame = None
+        self.__frame = next(self.__frame_iterator)
 
     @property
     def frame(self) -> Optional[np.ndarray]:
@@ -136,28 +124,20 @@ class FrameManager(Manager):
 
     def duration(self, timestamp: float) -> float:
         now_time = datetime.now()
-        if self.__activity.is_active(now_time):
-            return self.__media.duration
-
-        return self.__activity.get_duration_to_next_activity_period(now_time)
+        return self.__media.duration
 
     def update(self, timestamp: float):
-        if self.__activity.is_active(datetime.now()):
-            next_timestamp = self.next_timestamp(timestamp)
+        next_timestamp = self.next_timestamp(timestamp)
 
-            if timestamp >= next_timestamp:
-                try:
-                    self.__frame = next(self.__frame_iterator)
-                except StopIteration:
-                    self.__media = next(self.__media_iterator)
-                    self.__frame_iterator = iter(self.__media)
-                    self.__frame = next(self.__frame_iterator)
+        if timestamp >= next_timestamp:
+            try:
+                self.__frame = next(self.__frame_iterator)
+            except StopIteration:
+                self.__media = next(self.__media_iterator)
+                self.__frame_iterator = iter(self.__media)
+                self.__frame = next(self.__frame_iterator)
 
-                self.initial_timestamp = next_timestamp
-        else:
-            self.__reset(timestamp)
-            self.__frame = None
-            self.initial_timestamp = timestamp
+            self.initial_timestamp = next_timestamp
 
     @property
     def is_playing_video(self) -> bool:
