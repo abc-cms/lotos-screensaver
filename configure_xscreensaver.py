@@ -2,7 +2,7 @@
 
 from xscreensaver_config.ConfigParser import ConfigParser
 
-from lotos.configuration import get_xscreensaver_config_file, update_screensaver_configuration
+from lotos_screensaver.configuration import get_xscreensaver_config_file, update_screensaver_configuration
 
 
 def main():

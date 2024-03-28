@@ -1,5 +1,5 @@
 from random import randrange
-from typing import Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 from PIL.Image import fromarray
@@ -19,10 +19,10 @@ class OverlayManager(Manager):
     __BUTTON_HEIGHT: int = 100
     __BUTTON_RADIUS: int = 15
     __BUTTON_COLOR: Tuple[int, int, int] = 0, 255, 0
-    __BUTTON_TEXT: str = u"Прикоснитесь к экрану чтобы\nразблокировать"
+    __BUTTON_TEXT: str = u"Прикоснитесь к экрану чтобы разблокировать"
     __BUTTON_TEXT_COLOR: Tuple[int, int, int] = 255, 255, 255
     __BUTTON_TEXT_FONT: str = "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf"
-    __BUTTON_TEXT_SIZE: int = 30
+    __BUTTON_TEXT_SIZE: int = 24
     __BUTTON_SIDE_MARGIN: int = 50
     __BUTTON_SIDE_RANDOM_MARGIN: int = 215
     __BUTTON_BOTTOM_MARGIN: int = 50
@@ -32,7 +32,8 @@ class OverlayManager(Manager):
     __animation_interval: Tuple[float, float]
     __current_button: Button
     __next_button: Button
-    __is_animated: bool
+    __cached: Dict[str, np.ndarray]
+    __words_length: Tuple[int, List[int]]
 
     def __init__(self, initial_timestamp: float, screen_size: Tuple[int, int]):
         super().__init__(initial_timestamp)
@@ -51,14 +52,9 @@ class OverlayManager(Manager):
         self.__left_border_cached = minimal_button_frame[:, :self.__BUTTON_RADIUS].copy()
         self.__right_border_cached = minimal_button_frame[:, self.__BUTTON_RADIUS:].copy()
 
-        # Text.
-        font = truetype(self.__BUTTON_TEXT_FONT, self.__BUTTON_TEXT_SIZE)
-        text_size = font.getsize_multiline(self.__BUTTON_TEXT)
-        text_frame = np.full((text_size[1], text_size[0], 3), self.__BUTTON_COLOR, dtype=np.uint8)
-        image = fromarray(text_frame)
-        image_draw = Draw(image)
-        image_draw.text((0, 0), self.__BUTTON_TEXT, self.__BUTTON_TEXT_COLOR, font, align="center")
-        self.__text_cached = np.array(image)
+        self.__words_length = self.__determine_words_length(self.__BUTTON_TEXT)
+
+        self.__cached = {}
 
     def update_configuration(self, timestamp: float):
         self.__reset(timestamp)
@@ -113,17 +109,16 @@ class OverlayManager(Manager):
         frame = np.full((height, width, 3), self.__BUTTON_COLOR, dtype=np.uint8)
         frame[:, 0:self.__BUTTON_RADIUS] = self.__left_border_cached
         frame[:, width - self.__BUTTON_RADIUS:] = self.__right_border_cached
-        text_shape = self.__text_cached.shape[:2]
+        text_frame = self.__get_matching_text_frame(self.__BUTTON_TEXT, width)
+        text_shape = text_frame.shape[:2]
         ox, oy = (width - text_shape[1]) // 2, (height - text_shape[0]) // 2
-        frame[oy:oy + text_shape[0], ox:ox + text_shape[1]] = self.__text_cached
+        frame[oy:oy + text_shape[0], ox:ox + text_shape[1]] = text_frame
 
         return frame
 
     def update(self, timestamp: float):
         if timestamp >= self.__animation_interval[1]:
             self.initial_timestamp = self.__animation_interval[1]
-
-            sss = self.__animation_interval
 
             self.__animation_interval = (
                 self.__animation_interval[1] + self.SWITCH_DURATION,
@@ -137,3 +132,35 @@ class OverlayManager(Manager):
             self.initial_timestamp = \
                 self.__animation_interval[0] + ((timestamp - self.__animation_interval[0])
                                                 // self.ANIMATION_STEP_DURATION) * self.ANIMATION_STEP_DURATION
+
+    def __get_matching_text_frame(self, text: str, width: int) -> np.ndarray:
+        words = text.split(" ")
+        formatted = []
+        line = []
+        line_length = 0
+        for length, word in zip(self.__words_length[1], words):
+            if line_length + length + (self.__words_length[0] if line_length else 0) > width:
+                formatted.append(line)
+                line_length = 0
+            else:
+                line_length += self.__words_length[0]
+            line.append(word)
+            line_length += length
+        formatted.append(line)
+        formatted = list(filter(bool, formatted))
+        text = "\n".join(" ".join(line) for line in formatted)
+        return self.__cached.get(text, self.__draw_text(text))
+
+    def __draw_text(self, text: str) -> np.ndarray:
+        font = truetype(self.__BUTTON_TEXT_FONT, self.__BUTTON_TEXT_SIZE)
+        text_size = font.getsize_multiline(text)
+        text_size[1] += 10  # Fix bottom issue for "р", "ц" and other similar cases.
+        text_frame = np.full((text_size[1], text_size[0], 3), self.__BUTTON_COLOR, dtype=np.uint8)
+        image = fromarray(text_frame)
+        image_draw = Draw(image)
+        image_draw.text((0, 0), text, self.__BUTTON_TEXT_COLOR, font, align="center")
+        return np.array(image)
+
+    def __determine_words_length(self, text: str) -> Tuple[int, List[int]]:
+        font = truetype(self.__BUTTON_TEXT_FONT, self.__BUTTON_TEXT_SIZE)
+        return font.getsize(" ")[0], list(font.getsize(word)[0] for word in text.split(" "))
