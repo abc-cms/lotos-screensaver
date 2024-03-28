@@ -154,7 +154,7 @@ class OverlayManager(Manager):
     def __draw_text(self, text: str) -> np.ndarray:
         font = truetype(self.__BUTTON_TEXT_FONT, self.__BUTTON_TEXT_SIZE)
         text_size = font.getsize_multiline(text)
-        text_size[1] += 10  # Fix bottom issue for "р", "ц" and other similar cases.
+        text_size = (text_size[0], text_size[1] + 10)  # Fix bottom issue for "р", "ц" and other similar cases.
         text_frame = np.full((text_size[1], text_size[0], 3), self.__BUTTON_COLOR, dtype=np.uint8)
         image = fromarray(text_frame)
         image_draw = Draw(image)
