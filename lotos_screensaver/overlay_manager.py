@@ -142,6 +142,7 @@ class OverlayManager(Manager):
             if line_length + length + (self.__words_length[0] if line_length else 0) > width:
                 formatted.append(line)
                 line_length = 0
+                line = []
             else:
                 line_length += self.__words_length[0]
             line.append(word)
