@@ -3,7 +3,7 @@ from datetime import datetime, time, timedelta
 from operator import itemgetter
 from typing import Any, Dict, Tuple, Union
 
-import yaml
+import json
 from pathvalidate import Platform, is_valid_filepath
 from schema import And, Optional, Regex, Schema, SchemaError
 
@@ -17,7 +17,7 @@ __BLACK_SCREEN_FILE: str = "media/internal/black.png"
 
 __XSCREENSAVER_CONFIGURATION_FILE: str = "~/.xscreensaver"
 
-__SAVER_CONFIGURATION_FILE: str = "config.yaml"
+__SAVER_CONFIGURATION_FILE: str = "config.json"
 
 __CONFIGURATION_SCHEMA: Schema = Schema({
     "media_files": [
@@ -64,7 +64,7 @@ def validate_configuration(configuration: Dict[str, Any]):
 
 def read_configuration() -> Dict[str, Any]:
     with open(get_configuration_file()) as file:
-        return yaml.safe_load(file)
+        return json.load(file)
 
 
 def adjust_configuration(configuration: Dict[str, Any]) -> Dict[str, Any]:

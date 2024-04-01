@@ -4,7 +4,6 @@ numpy==1.26.4
 pathvalidate==3.2.0
 Pillow==8.2.0
 python-xlib==0.33
-PyYAML==6.0.1
 schema==0.7.5
 six==1.16.0
 xscreensaver-config==1.0.7
