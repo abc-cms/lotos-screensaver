@@ -29,8 +29,8 @@ class OperationManager:
             current_timestamp = monotonic()
 
             # Check if overlay animation is required.
-            is_overlay_update_required = \
-                self.__overlay_manager is not None and self.__overlay_manager.is_update_required(current_timestamp)
+            is_overlay_update_required = True  #\
+                #self.__overlay_manager is not None and self.__overlay_manager.is_update_required(current_timestamp)
             if is_overlay_update_required:
                 operations.append({"type": "update_overlay", "parameters": (current_timestamp,)})
 
@@ -47,7 +47,7 @@ class OperationManager:
 
             # Redraw if required.
             if is_overlay_update_required or is_frame_update_required:
-                operations.append({"type": "redraw", "parameters": ()})
+                operations.append({"type": "redraw", "parameters": (current_timestamp)})
 
             # Calculate the next timestamp.
             timestamps = []
@@ -65,7 +65,7 @@ class OperationManager:
                          self.__overlay_manager.duration(current_timestamp)):
                     next_timestamp = next_frame_timestamp
                 else:
-                    next_timestamp = min(timestamps)
+                    next_timestamp = min([*timestamps, 0.04])
             else:
                 next_timestamp = min(timestamps)
             yield next_timestamp, operations

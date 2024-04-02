@@ -2,11 +2,13 @@ from typing import Optional, Tuple
 
 import numpy as np
 from PIL.Image import Image, fromarray
-from Xlib import X
+from Xlib import X, threaded
 from Xlib.display import Display
 from Xlib.xobject.drawable import Pixmap, Window
 from Xlib.xobject.fontable import GC
 from loguru import logger
+from threading import Event, Thread
+from concurrent.futures import ThreadPoolExecutor
 
 
 class ScreenManager:
@@ -19,11 +21,24 @@ class ScreenManager:
     __gc: GC
     __image: Optional[Image]
     __default_image: Image
+    __draw_thread: Thread
+    __draw_event: Event
+    __draw_flag: bool
+    __exit_flag: bool
+    __draw_executor: ThreadPoolExecutor
 
     def __init__(self, xid: int):
         self.__xid = xid
 
+        self.__draw_executor = ThreadPoolExecutor()
+
         self.__display = display = Display()
+
+        self.__draw_event = Event()
+        self.__draw_flag = self.__exit_flag = False
+        self.__draw_thread = Thread(target=self.__internal_draw)
+        self.__draw_thread.start()
+
         self.__screensaver_window = self.__display.create_resource_object("window", xid)
 
         # Determine screen size, create child window and map it.
@@ -47,27 +62,36 @@ class ScreenManager:
         self.redraw()
 
     def run(self):
-        while True:
-            event = self.__display.next_event()
+        try:
+            while True:
+                event = self.__display.next_event()
 
-            if event.type == X.Expose:
-                self.redraw()
-            elif event.type == X.DestroyNotify:
-                break
-
-        logger.info("Stop X loop")
+                if event.type == X.Expose:
+                    if event.count == 0:
+                        self.redraw()
+                elif event.type == X.DestroyNotify:
+                    break
+        finally:
+            self.__close()
+            logger.info("Stop X loop")
 
     def update_image(self, image: Optional[Image]):
         self.__image = image
 
     def redraw(self):
+        self.__draw_executor.submit(self.__internal_draw)
+
+    def __internal_draw(self):
         self.__pixmap.put_pil_image(self.__gc, 0, 0, self.__default_image if self.__image is None else self.__image)
         self.__window.copy_area(self.__gc, self.__pixmap, 0, 0, self.__screen_size[0], self.__screen_size[1], 0, 0)
         self.__display.flush()
 
     def close(self):
-        self.__window.destroy()
-        self.__display.flush()
+        self.__exit_flag = True
+        if self.__window is not None:
+            self.__window.destroy()
+            self.__window = None
+            self.__display.flush()
 
     @property
     def screen_size(self) -> Tuple[int, int]:

@@ -13,16 +13,16 @@ from .manager import Manager
 class OverlayManager(Manager):
     SWITCH_DURATION: float = 5  # Seconds.
     ANIMATION_DURATION: float = 1  # Seconds.
-    ANIMATION_STEPS: int = 30
+    ANIMATION_STEPS: int = 50
     ANIMATION_STEP_DURATION: float = ANIMATION_DURATION / ANIMATION_STEPS
 
     __BUTTON_HEIGHT: int = 100
     __BUTTON_RADIUS: int = 15
-    __BUTTON_COLOR: Tuple[int, int, int] = 0, 255, 0
+    __BUTTON_COLOR: Tuple[int, int, int] = 76, 175, 80
     __BUTTON_TEXT: str = u"Прикоснитесь к экрану чтобы разблокировать"
     __BUTTON_TEXT_COLOR: Tuple[int, int, int] = 255, 255, 255
     __BUTTON_TEXT_FONT: str = "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf"
-    __BUTTON_TEXT_SIZE: int = 24
+    __BUTTON_TEXT_SIZE: int = 16
     __BUTTON_SIDE_MARGIN: int = 50
     __BUTTON_SIDE_RANDOM_MARGIN: int = 215
     __BUTTON_BOTTOM_MARGIN: int = 50
@@ -129,9 +129,7 @@ class OverlayManager(Manager):
             self.__next_button = self.__build_new_button()
 
         elif self.__animation_interval[0] <= timestamp < self.__animation_interval[1]:
-            self.initial_timestamp = \
-                self.__animation_interval[0] + ((timestamp - self.__animation_interval[0])
-                                                // self.ANIMATION_STEP_DURATION) * self.ANIMATION_STEP_DURATION
+            self.initial_timestamp = self.__animation_interval[0] + ((timestamp - self.__animation_interval[0]) // self.ANIMATION_STEP_DURATION) * self.ANIMATION_STEP_DURATION
 
     def __get_matching_text_frame(self, text: str, width: int) -> np.ndarray:
         words = text.split(" ")

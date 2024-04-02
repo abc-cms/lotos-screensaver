@@ -43,11 +43,11 @@ class Screensaver:
         self.__run_screen_loop()
         self.__update_thread.join()
 
-        if self.__configuration_manager.has_external_changes:
-            pid = os.fork()
-            if pid == 0:
-                sleep(5)  # Wait for some time parent process to be finished.
-                os.system("xscreensaver-command -restart")
+        #if self.__configuration_manager.has_external_changes:
+        #    pid = os.fork()
+        #    if pid == 0:
+        #        sleep(5)  # Wait for some time parent process to be finished.
+        #        os.system("xscreensaver-command -restart")
 
     def __run_screen_loop(self):
         self.__screen_manager.run()
@@ -97,11 +97,12 @@ class Screensaver:
                         self.__configuration_manager.update()
                         if self.__configuration_manager.has_internal_changes:
                             break
-                    elif operation_type == "update_overlay":
-                        self.__overlay_manager.update(*parameters)
+                    #elif operation_type == "update_overlay":
+                    #    self.__overlay_manager.update(*parameters)
                     elif operation_type == "update_frame":
                         self.__frame_manager.update(*parameters)
                     elif operation_type == "redraw":
+                        self.__overlay_manager.update(current_timestamp)
                         self.__redraw(current_timestamp)
                 else:
                     need_restart = False
