@@ -1,0 +1,13 @@
+[Unit]
+Description=Lotos Screensaver
+PartOf=graphical-session.target
+Requires=xdg-desktop-autostart.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/lotos
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=graphical-session.target

@@ -1,0 +1,10 @@
+[Unit]
+Description=Lotos Screensaver Timer
+
+[Timer]
+# Time to wait after booting before it run for first time
+OnBootSec=2m
+Unit=lotos.service
+
+[Install]
+WantedBy=default.target

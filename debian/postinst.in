@@ -1,0 +1,15 @@
+#!/bin/sh
+
+# add upstart profile script and start the lotos service
+INIT_SYSTEM=`cat /proc/1/comm`
+if test $INIT_SYSTEM = "systemd"
+then
+    systemctl --user stop lotos.service 2>/dev/null
+    systemctl --user disable lotos.service 2>/dev/null
+    cp @CPACK_PACKAGING_INSTALL_PREFIX@/local/share/lotos-screensaver/config/systemd/lotos.service /etc/systemd/system/lotos.service
+
+    systemctl daemon-reload
+    systemctl --user enable lotos.service
+    systemctl --user start lotos.service
+    systemctl --no-pager status lotos.service
+fi

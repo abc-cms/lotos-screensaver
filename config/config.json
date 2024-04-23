@@ -1,0 +1,38 @@
+{
+	"media_files": [
+		{
+			"type": "image",
+			"path": "~/.config/lotos-screensaver/media/demo/image1.jpg",
+			"time": 10
+		},
+		{
+			"type": "video",
+			"path": "~/.config/lotos-screensaver/media/demo/video1.mp4"
+		},
+		{
+			"type": "image",
+			"path": "~/.config/lotos-screensaver/media/demo/image2.jpg",
+			"time": 10
+		}
+	],
+	"button": {
+		"text": "Прикоснитесь к экрану чтобы разблокировать",
+		"text_color": "0xffffffff",
+		"text_size": 24,
+  		"background_color": "0xff4caf50",
+		"height": 100,
+  		"corner_radius": 15,
+		"side_margin": 50,
+		"side_margin_random": 215,
+		"bottom_margin": 50,
+		"bottom_margin_random": 215,
+		"animation_duration": 1,
+		"animation_steps": 50,
+		"switch_duration": 5
+	},
+	"screensaver_settings": {
+		"start_time": "09:00",
+		"end_time": "17:00",
+		"inactivity_timeout": 5
+	}
+}
