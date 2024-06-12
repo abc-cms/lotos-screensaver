@@ -21,11 +21,8 @@ enum class saver_type_e : uint8_t { none = 0, blank, render };
 class saver_manager_t {
 public:
     saver_manager_t() {
-        //std::cout << "CONNECT 1\n";
         m_connection = xcb_connect(nullptr, nullptr);
-        //std::cout << "CONNECT 2\n";
         m_screen = xcb_setup_roots_iterator(xcb_get_setup(m_connection)).data;
-        //std::cout << "CONNECT 3\n";
     }
 
     ~saver_manager_t() {
@@ -38,21 +35,14 @@ public:
 
     void run() {
         // Read configuration.
-        //std::cout << "1\n";
         configuration_t configuration = configuration_t::load(get_configuration_path());
-        //std::cout << "2\n";
         configure(configuration);
         // Start auxiliary threads.
-        //std::cout << "3\n";
         m_configuration_thread = std::thread(&saver_manager_t::configuration_thread, this);
-        //std::cout << "4\n";
         m_manager_thread = std::thread(&saver_manager_t::manager_thread, this);
-        //std::cout << "5\n";
         // Set exit handler and start main loop.
         std::signal(SIGTERM, handle_signals);
-        //std::cout << "6\n";
         std::signal(SIGINT, handle_signals);
-        //std::cout << "7\n";
         
         main_loop();
     }
@@ -84,7 +74,6 @@ protected:
 
     void main_loop() {
         xcb_generic_event_t *event;
-        //std::cout << "LOOP\n";
         while (event = xcb_wait_for_event(m_connection)) {
             if (event->response_type == (m_first_event + XCB_SCREENSAVER_NOTIFY)) {
                 xcb_screensaver_notify_event_t *ssn_event = reinterpret_cast<xcb_screensaver_notify_event_t *>(event);
@@ -108,7 +97,6 @@ protected:
 
             free(event);
         }
-        //std::cout << "!" << m_connection << " !!! " << event << "\n";
         terminate();
         m_connection = nullptr;
     }
@@ -117,28 +105,20 @@ protected:
         m_configuration = configuration;
 
         // Stop saver.
-        //std::cout << "CONF 1\n";
         use_saver(saver_type_e::none);
 
         // Configure X11 SCREENSAVER extension.
         uint32_t mask = 0; // XCB_CW_BACK_PIXEL;
         uint32_t values[] = {m_screen->black_pixel};
-        //std::cout << "CONF 2\n";
         auto sse_data = xcb_get_extension_data(m_connection, &xcb_screensaver_id);
-        //std::cout << "CONF 3: " << sse_data << " | " << m_connection << "\n";
         m_first_event = sse_data->first_event;
-        //std::cout << "CONF 4\n";
         xcb_set_screen_saver(m_connection, m_configuration.timeout(), 0, XCB_BLANKING_PREFERRED,
                              XCB_EXPOSURES_NOT_ALLOWED);
-        //std::cout << "CONF 5\n";
         xcb_screensaver_set_attributes(m_connection, m_screen->root, 0, 0, m_screen->width_in_pixels,
                                        m_screen->height_in_pixels, 0, XCB_WINDOW_CLASS_COPY_FROM_PARENT,
                                        XCB_COPY_FROM_PARENT, m_screen->root_visual, mask, values);
-        //std::cout << "CONF 6\n";
         xcb_screensaver_select_input(m_connection, m_screen->root, XCB_SCREENSAVER_EVENT_NOTIFY_MASK);
-        //std::cout << "CONF 7\n";
         xcb_flush(m_connection);
-        //std::cout << "CONF 8\n";
         update_saver();
     }
 
@@ -147,13 +127,11 @@ protected:
         if (saver_type != m_saver_type) {
             m_saver.reset();
             if (saver_type == saver_type_e::blank) {
-                //std::cout << "XXXXXX4\n";
                 auto saver = std::make_unique<blank_t>();
                 saver->configure(m_connection, m_saver_window);
                 saver->run();
                 m_saver = std::move(saver);
             } else if (saver_type == saver_type_e::render) {
-                //std::cout << "XXXXXX5\n";
                 auto saver = std::make_unique<render_t>();
                 saver->configure(m_connection, m_saver_window, m_configuration);
                 saver->run();
@@ -164,9 +142,7 @@ protected:
     }
 
     void update_saver() {
-        //std::cout << "UPDATE_SAVER\n";
         saver_type_e saver_type = get_appropriate_saver_type();
-        //std::cout << "UPDATE_SAVER 2\n";
         use_saver(saver_type);
     }
 
