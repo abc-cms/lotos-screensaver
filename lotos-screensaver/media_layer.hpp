@@ -86,7 +86,12 @@ public:
         auto [width, height, scale] = target_size(target_width, target_height, image_size[1], image_size[0]);
 
         cv::Mat image(height, width, CV_8UC3);
-        resize(m_image_data, image, image.size(), (scale > 1.0) ? cv::INTER_CUBIC : cv::INTER_AREA);
+        if (scale != 1.0) {
+            resize(m_image_data, image, image.size(), (scale > 1.0) ? cv::INTER_CUBIC : cv::INTER_AREA);
+        } else {
+            m_image_data.copyTo(image);
+        }
+        
 
         void *base = malloc(width * height * 4);
         xcb_image_t *native_image = xcb_image_create_native(connection, width, height, XCB_IMAGE_FORMAT_Z_PIXMAP, depth,
@@ -102,6 +107,10 @@ public:
 protected:
     static std::tuple<int, int, float> target_size(int target_width, int target_height, int frame_width,
                                                    int frame_height) {
+        if (target_width == frame_width && target_height == frame_height) {
+            return std::make_tuple(target_width, target_height, 1.0);
+        }
+
         int width, height;
         float target_ratio = static_cast<float>(target_width) / static_cast<float>(target_height);
         float frame_ration = static_cast<float>(frame_width) / static_cast<float>(frame_height);
