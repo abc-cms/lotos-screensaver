@@ -76,22 +76,25 @@ public:
         // Draw 3 rectangles.
         int16_t x = m_current_button.x;
         int16_t y = m_current_button.y;
-        uint16_t width = m_current_button.width;
-        uint16_t height = m_current_button.height;
-        uint16_t radius = m_current_button.corner_radius;
-        xcb_rectangle_t rectangles[]
-            = {{x, static_cast<int16_t>(y + radius), radius, static_cast<uint16_t>(height - 2 * radius)},
-               {static_cast<int16_t>(x + radius), y, static_cast<uint16_t>(width - 2 * radius), height},
-               {static_cast<int16_t>(x + width - radius), static_cast<int16_t>(y + radius), radius,
-                static_cast<uint16_t>(height - 2 * radius)}};
+        int16_t width = static_cast<int16_t>(m_current_button.width);
+        int16_t height = static_cast<int16_t>(m_current_button.height);
+        int16_t radius = static_cast<int16_t>(m_current_button.corner_radius);
+        xcb_rectangle_t rectangles[] = {{x, static_cast<int16_t>(y + radius), static_cast<uint16_t>(radius),
+                                         static_cast<uint16_t>(height - 2 * radius)},
+                                        {static_cast<int16_t>(x + radius), y, static_cast<uint16_t>(width - 2 * radius),
+                                         static_cast<uint16_t>(height)},
+                                        {static_cast<int16_t>(x + width - radius), static_cast<int16_t>(y + radius),
+                                         static_cast<uint16_t>(radius), static_cast<uint16_t>(height - 2 * radius)}};
         xcb_poly_fill_rectangle(connection, pixmap, gc, 3, rectangles);
         // Draw 4 corners.
         xcb_arc_t arcs[]
-            = {{x, y, 2 * radius, 2 * radius, 90 << 6, 90 << 6},
-               {x, static_cast<int16_t>(y + height - 2 * radius), 2 * radius, 2 * radius, 180 << 6, 90 << 6},
-               {static_cast<int16_t>(x + width - 2 * radius), y, 2 * radius, 2 * radius, 0, 90 << 6},
-               {static_cast<int16_t>(x + width - 2 * radius), static_cast<int16_t>(y + height - 2 * radius), 2 * radius,
-                2 * radius, 0, -90 << 6}};
+            = {{x, y, static_cast<uint16_t>(2 * radius), static_cast<uint16_t>(2 * radius), 90 << 6, 90 << 6},
+               {x, static_cast<int16_t>(y + height - 2 * radius), static_cast<uint16_t>(2 * radius),
+                static_cast<uint16_t>(2 * radius), 180 << 6, 90 << 6},
+               {static_cast<int16_t>(x + width - 2 * radius), y, static_cast<uint16_t>(2 * radius),
+                static_cast<uint16_t>(2 * radius), 0, 90 << 6},
+               {static_cast<int16_t>(x + width - 2 * radius), static_cast<int16_t>(y + height - 2 * radius),
+                static_cast<uint16_t>(2 * radius), static_cast<uint16_t>(2 * radius), 0, -90 << 6}};
         xcb_poly_fill_arc(connection, pixmap, gc, 4, arcs);
 
         uint32_t black = 0x00000000;
@@ -214,10 +217,10 @@ protected:
         return {m_configuration.text(),
                 m_configuration.text_size(),
                 m_configuration.text_color(),
-                side_margin,
-                height - bottom_margin - m_configuration.height(),
-                width - 2 * side_margin,
-                m_configuration.height(),
+                static_cast<int32_t>(side_margin),
+                static_cast<int32_t>(height - bottom_margin - m_configuration.height()),
+                static_cast<int32_t>(width - 2 * side_margin),
+                static_cast<int32_t>(m_configuration.height()),
                 m_configuration.background_color(),
                 m_configuration.corner_radius()};
     }
