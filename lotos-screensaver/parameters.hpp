@@ -7,7 +7,7 @@
 #include <unistd.h>
 
 constexpr const char *configuration_path = "~/Documents/config/config.json";
-constexpr const char *logging_path = "/var/log/lotos-screensaver/lotos.log";
+constexpr const char *logging_path = "~/lotos-screensaver/lotos.log";
 constexpr const char *log_name = "file";
 
 std::filesystem::path absolute_path(std::string path) {
@@ -18,8 +18,6 @@ std::filesystem::path absolute_path(std::string path) {
     return std::filesystem::absolute(path);
 }
 
-std::filesystem::path get_configuration_path() {
-    return absolute_path(configuration_path);
-}
+std::filesystem::path get_configuration_path() { return absolute_path(configuration_path); }
 
 std::filesystem::path get_logging_path() { return absolute_path(logging_path); }

@@ -7,6 +7,7 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/videoio.hpp>
 #include <parameters.hpp>
+#include <spdlog/spdlog.h>
 #include <xcb/xcb_image.h>
 
 class slider_t {
@@ -20,12 +21,16 @@ public:
     }
 
     std::tuple<cv::Mat, std::chrono::steady_clock::duration> next() {
+        auto log = spdlog::get(log_name);
+
         while (true) {
             auto media = m_media[m_current_index];
 
             if (media.media_type() == media_type_e::video) {
                 if (!m_capture.isOpened()) {
-                    m_capture.open(absolute_path(media.path()).string());
+                    auto path = absolute_path(media.path()).string();
+                    m_capture.open(path);
+                    log->info("Video {} is used", path);
                 }
 
                 cv::Mat frame;
@@ -45,7 +50,9 @@ public:
             if (media.media_type() == media_type_e::image) {
                 m_current_index = (m_current_index + 1) % m_media.size();
 
-                return std::make_tuple(cv::imread(absolute_path(media.path()).string()),
+                auto path = absolute_path(media.path()).string();
+                log->info("Image {} is used", path);
+                return std::make_tuple(cv::imread(path),
                                        std::chrono::duration_cast<std::chrono::steady_clock::duration>(
                                            std::chrono::duration<float>(media.duration())));
             }
@@ -91,7 +98,6 @@ public:
         } else {
             m_image_data.copyTo(image);
         }
-        
 
         void *base = malloc(width * height * 4);
         xcb_image_t *native_image = xcb_image_create_native(connection, width, height, XCB_IMAGE_FORMAT_Z_PIXMAP, depth,

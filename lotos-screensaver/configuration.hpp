@@ -114,14 +114,14 @@ public:
     static configuration_t load(const std::filesystem::path &path) {
         configuration_t configuration;
 
-        //auto log = spdlog::get(log_name);
-        //log->info("Loading configuration from {}", static_cast<std::string>(path));
+        auto log = spdlog::get(log_name);
+        log->info("Loading configuration from {}", static_cast<std::string>(path));
 
         Json::Value root;
         std::ifstream file(path);
 
         if (file.bad()) {
-            //log->error("Unable to open configuration file: {}", static_cast<std::string>(path));
+            log->error("Unable to open configuration file: {}", static_cast<std::string>(path));
             throw std::runtime_error("Read configuration error");
         }
 
@@ -129,8 +129,8 @@ public:
         Json::CharReaderBuilder builder;
 
         if (!parseFromStream(builder, file, &root, &errors)) {
-            //log->error("Unable to load configuration from file {} due to errors: {}", static_cast<std::string>(path),
-            //           errors);
+            log->error("Unable to load configuration from file {} due to errors: {}", static_cast<std::string>(path),
+                       errors);
             throw std::runtime_error("Read configuration error");
         }
 
@@ -181,7 +181,7 @@ public:
 
         configuration.m_activity_frames.push_back(interval);
 
-        //log->info("Configuration loaded");
+        log->info("Configuration loaded");
 
         return configuration;
     }

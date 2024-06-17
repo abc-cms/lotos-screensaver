@@ -2,7 +2,9 @@
 
 #include <cstdint>
 
+#include <parameters.hpp>
 #include <saver.hpp>
+#include <spdlog/spdlog.h>
 #include <xcb/xcb.h>
 
 class blank_t : public saver_t {
@@ -10,6 +12,9 @@ public:
     virtual ~blank_t() { reset(); }
 
     void configure(xcb_connection_t *connection, xcb_window_t window) {
+        auto log = spdlog::get(log_name);
+        log->info("Configure blank screensaver");
+
         // Clean up first.
         reset();
 
@@ -34,6 +39,8 @@ public:
     }
 
     virtual void reset() {
+        auto log = spdlog::get(log_name);
+        log->info("Reset blank screensaver");
         if (m_is_configured) {
             xcb_free_gc(m_connection, m_gc);
             xcb_free_pixmap(m_connection, m_pixmap);
@@ -48,12 +55,15 @@ public:
     }
 
     virtual void run() {
+        auto log = spdlog::get(log_name);
+        log->info("Run blank screensaver");
         if (m_is_configured) {
             xcb_change_gc(m_connection, m_gc, XCB_GC_FOREGROUND, &black);
             xcb_rectangle_t rectangle = {0, 0, m_width, m_height};
             xcb_poly_fill_rectangle(m_connection, m_pixmap, m_gc, 1, &rectangle);
             xcb_copy_area(m_connection, m_pixmap, m_window, m_gc, 0, 0, 0, 0, m_width, m_height);
             xcb_flush(m_connection);
+            log->info("Blank screensaver became active");
         }
     }
 
