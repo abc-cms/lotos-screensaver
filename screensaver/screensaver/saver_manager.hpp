@@ -25,28 +25,8 @@ public:
     saver_manager_t() {
         auto log = spdlog::get(log_name);
         log->info("Create screensaver manager");
-        m_connection = xcb_connect(nullptr, nullptr);
-        m_screen = xcb_setup_roots_iterator(xcb_get_setup(m_connection)).data;
-
-        xcb_depth_iterator_t depth_iter = xcb_screen_allowed_depths_iterator(m_screen);
-        for (; depth_iter.rem; xcb_depth_next(&depth_iter)) {
-            if (depth_iter.data->depth == 32 && depth_iter.data->visuals_len) {
-                m_aux_depth = depth_iter.data;
-                break;
-            }
-        }
-
-        xcb_visualtype_iterator_t visual_iter = xcb_depth_visuals_iterator(m_aux_depth);
-        for (; visual_iter.rem; xcb_visualtype_next(&visual_iter)) {
-            if (visual_iter.data->_class == XCB_VISUAL_CLASS_TRUE_COLOR) {
-                m_aux_visual = visual_iter.data;
-                break;
-            }
-        }
-
-        m_aux_colormap = xcb_generate_id(m_connection);
-        xcb_create_colormap(m_connection, XCB_COLORMAP_ALLOC_NONE, m_aux_colormap, m_screen->root,
-                            m_aux_visual->visual_id);
+        
+        // Initialize screen tools.
 
         log->info("Screensaver manager created");
     }
@@ -56,16 +36,7 @@ public:
         log->info("Destroy screensaver manager");
         terminate();
 
-        if (m_connection) {
-            destroy_auxiliary_window();
-
-            if (m_aux_colormap) {
-                xcb_uninstall_colormap(m_connection, m_aux_colormap);
-            }
-            xcb_disconnect(m_connection);
-        }
-        m_connection = nullptr;
-        m_aux_colormap = 0;
+        // Destroy resources.
 
         log->info("Screensaver manager destroyed");
     }
@@ -80,7 +51,8 @@ public:
         log->info("Start utility thread");
         m_configuration_thread = std::thread(&saver_manager_t::configuration_thread, this);
         log->info("Start rendering thread");
-        m_manager_thread = std::thread(&saver_manager_t::manager_thread, this);
+        m_manager_thread = std::thread(&saver_manager_t::manager
+            thread, this);
         // Set exit handler and start main loop.
         log->info("Set SIGTERM and SIGINT signals");
         std::signal(SIGTERM, handle_signals);
@@ -111,11 +83,7 @@ public:
 
 protected:
     static void handle_signals(int signal) {
-        if (m_connection) {
-            xcb_screensaver_unset_attributes(m_connection, m_screen->root);
-            xcb_flush(m_connection);
-            xcb_disconnect(m_connection);
-        }
+        // Stop saver.
     }
 
     void main_loop() {
@@ -159,7 +127,6 @@ protected:
         log->info("The main screensaver loop exited");
 
         terminate();
-        m_connection = nullptr;
     }
 
     void configure(const configuration_t &configuration) {
@@ -267,30 +234,30 @@ protected:
         return saver_type_e::none;
     }
 
-    void create_auxiliary_window()
-    {
-        unsigned int mask = XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL | XCB_CW_COLORMAP;
-        unsigned int values[] = {0x00000000, 0, m_aux_colormap};
+    // void create_auxiliary_window()
+    // {
+    //     unsigned int mask = XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL | XCB_CW_COLORMAP;
+    //     unsigned int values[] = {0x00000000, 0, m_aux_colormap};
 
-        m_aux_window = xcb_generate_id(m_connection);
-        xcb_create_window(m_connection, m_aux_depth->depth, m_aux_window, m_screen->root, 0, 0,
-                          m_screen->width_in_pixels, m_screen->height_in_pixels, 1, XCB_WINDOW_CLASS_INPUT_OUTPUT,
-                          m_aux_visual->visual_id, mask, values);
+    //     m_aux_window = xcb_generate_id(m_connection);
+    //     xcb_create_window(m_connection, m_aux_depth->depth, m_aux_window, m_screen->root, 0, 0,
+    //                       m_screen->width_in_pixels, m_screen->height_in_pixels, 1, XCB_WINDOW_CLASS_INPUT_OUTPUT,
+    //                       m_aux_visual->visual_id, mask, values);
 
-        xcb_map_window(m_connection, m_aux_window);
-        xcb_flush(m_connection);
-    }
+    //     xcb_map_window(m_connection, m_aux_window);
+    //     xcb_flush(m_connection);
+    // }
 
-    void destroy_auxiliary_window()
-    {
-        if (m_aux_window != 0)
-        {
-            xcb_unmap_window(m_connection, m_aux_window);
-            xcb_destroy_window(m_connection, m_aux_window);
-            xcb_flush(m_connection);
-            m_aux_window = 0;
-        }
-    }
+    // void destroy_auxiliary_window()
+    // {
+    //     if (m_aux_window != 0)
+    //     {
+    //         xcb_unmap_window(m_connection, m_aux_window);
+    //         xcb_destroy_window(m_connection, m_aux_window);
+    //         xcb_flush(m_connection);
+    //         m_aux_window = 0;
+    //     }
+    // }
 
     bool is_active_period() const {
         auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
@@ -337,8 +304,6 @@ private:
 
     configuration_t m_configuration;
 
-    inline static xcb_connection_t *m_connection = nullptr;
-    inline static xcb_screen_t *m_screen = nullptr;
     uint8_t m_first_event = 0;
 
     constexpr static std::chrono::steady_clock::duration update_configuration_rate = 60s;
