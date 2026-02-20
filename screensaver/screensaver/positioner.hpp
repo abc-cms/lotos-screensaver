@@ -4,17 +4,24 @@
 #include <random>
 #include <tuple>
 #include <iostream>
+#include "screensaver/screensaver/configuration.hpp"
 
 class positioner_t {
 public:
-    positioner_t(int animation_duration, int switch_duration, int window_width, int window_height, int button_height,
-                 int bottom_margin, int bottom_margin_random, int side_margin, int side_margin_random, int radius)
-        : m_animation_duration(animation_duration), m_switch_duration(switch_duration), m_window_width(window_width),
-          m_window_height(window_height), m_button_height(button_height), m_bottom_margin(bottom_margin),
-          m_bottom_margin_random(bottom_margin_random), m_side_margin(side_margin),
-          m_side_margin_random(side_margin_random), m_full_duration(animation_duration + switch_duration) {
-            update_offsets();
-            update(0);
+    void set_configuration(const button_configuration_t& configuration, const int window_width, const int window_height, const int button_height) {
+        m_animation_duration = configuration.animation_duration();
+        m_switch_duration = configuration.switch_duration();
+        m_window_width = window_width;
+        m_window_height = window_height;
+        m_button_height = button_height;
+        m_bottom_margin = configuration.bottom_margin();
+        m_bottom_margin_random = configuration.bottom_margin_random();
+        m_side_margin = configuration.side_margin();
+        m_side_margin_random = configuration.side_margin_random();
+        m_full_duration = m_animation_duration + m_switch_duration;
+
+        update_offsets();
+        update(0);
     }
 
     void update(const float time) {
@@ -51,17 +58,17 @@ private:
     }
 
 private:
-    const int m_animation_duration;
-    const int m_switch_duration;
-    const int m_window_width;
-    const int m_window_height;
-    const int m_button_height;
-    const int m_bottom_margin;
-    const int m_bottom_margin_random;
-    const int m_side_margin;
-    const int m_side_margin_random;
+    int m_animation_duration;
+    int m_switch_duration;
+    int m_window_width;
+    int m_window_height;
+    int m_button_height;
+    int m_bottom_margin;
+    int m_bottom_margin_random;
+    int m_side_margin;
+    int m_side_margin_random;
 
-    const float m_full_duration;
+    float m_full_duration;
 
     int previous_period = -1;
     int m_side_offset = 0;
