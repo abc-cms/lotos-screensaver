@@ -23,14 +23,14 @@ public:
         m_renderer = renderer;
     }
 
-    void render(const std::string& text, const int width, const int height, const SDL_Color& bg_color, const SDL_Color& fg_color, const int radius) {
-        if (
-            text != m_text
-        || width != m_width
-        || height != m_height
-        || !compare_color(bg_color, m_bg_color)
-        || !compare_color(fg_color, m_fg_color)
-        || radius != m_radius) {
+    void render(const std::string& text, const int width, const int height, const SDL_Color& bg_color, const SDL_Color& fg_color, const int radius, const int window_width, const int bottom) {
+        const bool text_equal = text == m_text;
+        const bool width_equal = width == m_width;
+        const bool height_equal = height == m_height;
+        const bool bg_color_equal = compare_color(bg_color, m_bg_color);
+        const bool fg_color_equal = compare_color(fg_color, m_fg_color);
+        const bool radius_equal = radius == m_radius;
+        if (!text_equal || !width_equal || !height_equal || !bg_color_equal || ! fg_color_equal || !radius_equal) {
             m_text = text;
             m_width = width;
             m_height = height;
@@ -38,16 +38,30 @@ public:
             m_fg_color = fg_color;
             m_radius = radius;
 
-            rebuild();
+            rebuild(
+                !(text_equal && width_equal && bg_color_equal && radius_equal),
+                !(bg_color_equal && radius_equal),
+                !(text_equal && width_equal && fg_color_equal && radius_equal)  
+            );
         }
 
-        SDL_RenderCopy(m_renderer, m_button_texture, nullptr, nullptr);
+        SDL_Rect destination_rect{(window_width - width) / 2, bottom - m_height, m_width, m_height };
+        SDL_RenderCopy(m_renderer, m_button_texture, nullptr, &destination_rect);
     }
 
 private:
-    void rebuild() {
+    void rebuild(const bool rebuild_button, const bool rebuild_corner, const bool rebuild_text) {
         std::cout << "rebuild" << std::endl;
-        create_button_texture(m_text.c_str(), m_width, m_height, m_bg_color, m_fg_color, m_radius);        
+        if (rebuild_corner) {
+            draw_circle_texture(m_radius, m_bg_color);
+        }
+        if (rebuild_text) {
+            create_text_texture(m_text, m_fg_color, m_width - 2 * m_radius);
+        }
+        if (rebuild_button) {
+            m_height = std::max(m_height, m_text_height + 2 * (m_radius + 1));
+            create_button_texture(m_text.c_str(), m_width, m_height, m_bg_color, m_fg_color, m_radius);        
+        }
     }
 
     static bool compare_color(const SDL_Color& left, const SDL_Color& right) {
@@ -125,17 +139,18 @@ private:
         SDL_RenderFillRect(m_renderer, &left);
         SDL_RenderFillRect(m_renderer, &right);
 
-        //SDL_Rect lt_rect = {0, 0, radius + 1, radius + 1};
-        //SDL_RenderCopy(m_renderer, m_circle_texture, nullptr, &lt_rect);
-        //SDL_Rect lb_rect = {0, height - radius - 1, radius + 1, radius + 1};
-        //SDL_RenderCopy(m_renderer, m_circle_texture, nullptr, &lb_rect);
-        //SDL_Rect rb_rect = {width - radius - 1, height - radius - 1, radius + 1, radius + 1};
-        //SDL_RenderCopy(m_renderer, m_circle_texture, nullptr, &rb_rect);
-        //SDL_Rect rt_rect = {width - radius - 1, 0, radius + 1, radius + 1};
-        //SDL_RenderCopy(m_renderer, m_circle_texture, nullptr, &rt_rect); 
+        const int circle_size = 2 * radius + 1;
+        SDL_Rect lt_rect = {0, 0, circle_size, circle_size};
+        SDL_RenderCopy(m_renderer, m_circle_texture, nullptr, &lt_rect);
+        SDL_Rect lb_rect = {0, height - circle_size, circle_size, circle_size};
+        SDL_RenderCopy(m_renderer, m_circle_texture, nullptr, &lb_rect);
+        SDL_Rect rb_rect = {width - circle_size, height - circle_size, circle_size, circle_size};
+        SDL_RenderCopy(m_renderer, m_circle_texture, nullptr, &rb_rect);
+        SDL_Rect rt_rect = {width - circle_size, 0, circle_size, circle_size};
+        SDL_RenderCopy(m_renderer, m_circle_texture, nullptr, &rt_rect); 
 
-        //SDL_Rect text_rect = {(width - m_text_width) / 2, (height - m_text_height) / 2, m_text_width, m_text_height};
-        //SDL_RenderCopy(m_renderer, m_text_texture, nullptr, &text_rect);
+        SDL_Rect text_rect = {(width - m_text_width) / 2, (height - m_text_height) / 2, m_text_width, m_text_height};
+        SDL_RenderCopy(m_renderer, m_text_texture, nullptr, &text_rect);
         SDL_SetRenderTarget(m_renderer, nullptr);
     }
 

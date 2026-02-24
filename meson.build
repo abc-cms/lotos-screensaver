@@ -8,8 +8,6 @@ project(
   default_options : ['cpp_std=c++20']
 )
 add_project_arguments('-std=c++20', language : 'cpp')
-# Set default C++ standard
-#cpp_std = 'c++20'
 
 # Define common include directory
 common_inc = include_directories('screensaver/common')
@@ -25,7 +23,6 @@ spdlog_dep = dependency('spdlog', required: true)
 
 executable('lotos-screensaver',
   'screensaver/screensaver/screensaver.cpp',
-  #'screensaver/screensaver/button.cpp',
   include_directories: common_inc,
   dependencies: [screensaver_dep, mpv_dep, gl_dep, glew_dep, sdl2_ttf_dep, jsocpp_dep, spdlog_dep],
   install: true,
@@ -37,11 +34,11 @@ idle_dep = dependency('libinput')
 udev_dep = dependency('libudev')
 json_dep = dependency('nlohmann_json')
 
-#executable('lotos-idle',
-#  'screensaver/idle/idle.cpp',
-#  'screensaver/idle/idle_daemon.cpp',
-#  include_directories: [common_inc],
-#  dependencies: [idle_dep, udev_dep, json_dep],
-#  install: true,
-#  install_dir: '/usr/bin'
-#)
+executable('lotos-idle',
+  'screensaver/idle/idle.cpp',
+  'screensaver/idle/idle_daemon.cpp',
+  include_directories: [common_inc],
+  dependencies: [idle_dep, udev_dep, json_dep],
+  install: true,
+  install_dir: '/usr/bin'
+)

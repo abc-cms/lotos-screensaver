@@ -1,27 +1,29 @@
 /*!
  * \file idle_daemon.cpp
  * \brief Implementation of the idle daemon class
- * 
+ *
  * This file contains the implementation of the idle_daemon class that controls
  * screen savers based on user idle time.
  */
 
 #include "idle_daemon.hpp"
-#include <iostream>
+
+#include <atomic>
+#include <chrono>
+#include <cstdlib>
+#include <filesystem>
 #include <fstream>
+#include <iostream>
+#include <thread>
+
+#include <fcntl.h>
+#include <nlohmann/json.hpp>
+#include <parameters.hpp>
 #include <poll.h>
+#include <pwd.h>
 #include <signal.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <thread>
-#include <chrono>
-#include <nlohmann/json.hpp>
-#include <filesystem>
-#include <pwd.h>
-#include <cstdlib>
-#include <atomic>
-
-#include <parameters.hpp>
 
 /*!
  * \brief Static pointer to the daemon instance for signal handling
@@ -38,8 +40,8 @@ static idle_daemon *daemon_instance = nullptr;
 void signal_handler(int signum) {
     if (daemon_instance) {
         std::cout << "Received signal " << signum << ", shutting down...\n";
-        daemon_instance->stop_saver();  // Stop any running screensaver
-        exit(0);  // Exit cleanly
+        daemon_instance->stop_saver(); // Stop any running screensaver
+        exit(0);                       // Exit cleanly
     }
 }
 
@@ -50,7 +52,7 @@ idle_daemon::idle_daemon() {
     // Initialize libinput interface
     interface.open_restricted = open_restricted;
     interface.close_restricted = close_restricted;
-    
+
     // Set the static instance pointer for signal handling
     daemon_instance = this;
 }
@@ -100,30 +102,35 @@ void idle_daemon::close_restricted(int fd, void *) {
  */
 void idle_daemon::load_config() {
     std::string config_path = get_configuration_path().string();
-    std::ifstream f(config_path);
-    if (!f.is_open()) {
+    std::ifstream file(config_path);
+    if (!file.is_open()) {
         std::cerr << "Cannot open config at " << config_path << "\n";
         return;
     }
 
-    nlohmann::json j;
-    f >> j;
+    nlohmann::json root;
+    file >> root;
 
-    idle_timeout_sec = j.value("idle_timeout_sec", 300);
+    int inactivity_timeout = 5;
+
+    try {
+        inactivity_timeout = root.at("screensaver_settings").at("inactivity_timeout").get<int>();
+        std::cout << "inactivity_timeout = " << inactivity_timeout << std::endl;
+    } catch (const std::exception &e) {
+        std::cerr << "JSON error: " << e.what() << std::endl;
+    }
+
+    idle_timeout_sec = 10; //inactivity_timeout * 60;
 
     saver_cmd.clear();
-    if (j.contains("screensaver_cmd")) {
-        for (auto &a : j["screensaver_cmd"]) {
-            saver_cmd.push_back(a.get<std::string>());
-        }
-    }
+    saver_cmd.push_back("lotos-screensaver");
 
     std::cout << "Config reloaded: timeout=" << idle_timeout_sec << "s\n";
 }
 
 /*!
  * \brief Reload configuration from file every 10 seconds
- * 
+ *
  * This method runs in a separate thread to periodically reload the
  * configuration file.
  */
@@ -186,7 +193,7 @@ void idle_daemon::on_sighup(int) {
 
 /*!
  * \brief Run the idle daemon
- * 
+ *
  * This method starts the main event loop of the idle daemon.
  * \return Exit status of the program
  */
@@ -233,6 +240,6 @@ int idle_daemon::run() {
             start_saver();
         }
     }
-    
+
     return 0;
 }

@@ -59,6 +59,31 @@ public:
      */
     void reload_config_loop();
 
+    /*!
+     * \brief Start the screensaver process
+     *
+     * This function forks a new process to execute the screensaver command.
+     * If a screensaver is already running or the command is empty, nothing is done.
+     */
+     void start_saver();
+    
+     /*!
+      * \brief Stop the running screensaver process
+      *
+      * This function sends a SIGTERM signal to the screensaver process
+      * and waits for it to terminate before resetting the process ID.
+      */
+     void stop_saver();
+     
+     /*!
+      * \brief Signal handler for SIGHUP signal
+      *
+      * This function is called when the daemon receives a SIGHUP signal,
+      * which indicates that the configuration should be reloaded.
+      * \param signum Signal number (ignored)
+      */
+     static void on_sighup(int);
+
 private:
     /*!
      * \var reload_config
@@ -123,29 +148,4 @@ private:
      * \param user_data User data pointer
      */
     static void close_restricted(int fd, void *);
-    
-    /*!
-     * \brief Start the screensaver process
-     *
-     * This function forks a new process to execute the screensaver command.
-     * If a screensaver is already running or the command is empty, nothing is done.
-     */
-    void start_saver();
-    
-    /*!
-     * \brief Stop the running screensaver process
-     *
-     * This function sends a SIGTERM signal to the screensaver process
-     * and waits for it to terminate before resetting the process ID.
-     */
-    void stop_saver();
-    
-    /*!
-     * \brief Signal handler for SIGHUP signal
-     *
-     * This function is called when the daemon receives a SIGHUP signal,
-     * which indicates that the configuration should be reloaded.
-     * \param signum Signal number (ignored)
-     */
-    static void on_sighup(int);
 };
